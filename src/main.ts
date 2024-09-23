@@ -9,12 +9,18 @@ const pixelSize = 20;
 const fontSize = 15;
 const letters = "abcdefghijklmnopqrstuvwxyz";
 
+console.log("Loading fonts...");
+
 await Assets.load("JetBrainsMono/JetBrainsMono-Regular.woff2");
 let rng = seedrandom("1337");
+
+console.log("Fonts loaded!");
 
 const app = new Application();
 await app.init({ resizeTo: window, backgroundColor: levelColor });
 document.getElementById("app")!.appendChild(app.canvas);
+
+console.log("App started!");
 
 // Developer tools integration
 // @ts-ignore
