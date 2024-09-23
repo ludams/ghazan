@@ -82,24 +82,89 @@ function startApp() {
   let playerX = 1;
   let playerY = 25;
 
-  window.addEventListener("keydown", (event: KeyboardEvent) => {
-    var upLetter = letterMap.get(`${playerX}x${playerY - 1}`);
-    var downLetter = letterMap.get(`${playerX}x${playerY + 1}`);
-    var rightLetter = letterMap.get(`${playerX + 1}x${playerY}`);
-    var leftLetter = letterMap.get(`${playerX - 1}x${playerY}`);
+  enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+    None,
+  }
 
-    if (upLetter && upLetter === event.key) {
-      playerY -= 1;
-      player.y -= pixelSize;
-    } else if (downLetter && downLetter === event.key) {
-      playerY += 1;
-      player.y += pixelSize;
-    } else if (leftLetter && leftLetter === event.key) {
-      playerX -= 1;
-      player.x -= pixelSize;
-    } else if (rightLetter && rightLetter === event.key) {
-      playerX += 1;
-      player.x += pixelSize;
+  let history: Direction[] = [Direction.None];
+
+  function moveByDirection(direction: Direction) {
+    switch (direction) {
+      case Direction.Up:
+        playerY -= 1;
+        player.y -= pixelSize;
+        break;
+      case Direction.Down:
+        playerY += 1;
+        player.y += pixelSize;
+        break;
+      case Direction.Left:
+        playerX -= 1;
+        player.x -= pixelSize;
+        break;
+      case Direction.Right:
+        playerX += 1;
+        player.x += pixelSize;
+        break;
+      default:
+        break;
+    }
+  }
+
+  const getOppositeDirection = (direction: Direction) => {
+    switch (direction) {
+      case Direction.Up:
+        return Direction.Down;
+      case Direction.Down:
+        return Direction.Up;
+      case Direction.Left:
+        return Direction.Right;
+      case Direction.Right:
+        return Direction.Left;
+      default:
+        return Direction.None;
+    }
+  };
+
+  window.addEventListener("keydown", (event: KeyboardEvent) => {
+    const upLetter = letterMap.get(`${playerX}x${playerY - 1}`);
+    const downLetter = letterMap.get(`${playerX}x${playerY + 1}`);
+    const rightLetter = letterMap.get(`${playerX + 1}x${playerY}`);
+    const leftLetter = letterMap.get(`${playerX - 1}x${playerY}`);
+
+    let lastDirection = history[history.length - 1];
+    const surroundingLettersWithDirection = [
+      [upLetter, Direction.Up],
+      [downLetter, Direction.Down],
+      [leftLetter, Direction.Left],
+      [rightLetter, Direction.Right],
+    ].filter(
+      (directionByLetter): directionByLetter is [string, Direction] =>
+        directionByLetter[0] !== undefined,
+    );
+
+    const nextDirectionsByLetterMap = new Map<string, Direction>(
+      surroundingLettersWithDirection.filter(
+        ([_, direction]) => lastDirection !== getOppositeDirection(direction),
+      ),
+    );
+
+    const nextDirection = nextDirectionsByLetterMap.get(event.key);
+
+    if (nextDirection !== undefined) {
+      moveByDirection(nextDirection);
+      history.push(nextDirection);
+      return;
+    }
+
+    if (event.key === "Backspace" && lastDirection !== Direction.None) {
+      const revertedLastDirection = getOppositeDirection(lastDirection);
+      moveByDirection(revertedLastDirection);
+      history.pop();
     }
   });
 }
