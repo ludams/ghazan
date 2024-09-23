@@ -1,6 +1,6 @@
 export default {
-    base: '/themaze/',
-    build: {
-        target: 'es2022',
-    },
+  base: "/themaze/",
+  build: {
+    target: "es2022",
+  },
 };
