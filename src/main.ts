@@ -1,5 +1,5 @@
 import "./styles.css";
-import { Application, Assets, Graphics, Text } from "pixi.js";
+import { Application, Assets, Graphics, Point, Text } from "pixi.js";
 import seedrandom from "seedrandom";
 import maze1String from "./mazes/maze1.txt?raw";
 
@@ -50,9 +50,13 @@ for (const [x, y] of maze.walls) {
   app.stage.addChild(obj);
 }
 
+new Point();
+const letterMap = new Map<string, string>();
+
 for (const [x, y] of maze.path) {
+  let letter = randomLetter();
   const text = new Text({
-    text: randomLetter(),
+    text: letter,
     style: {
       fontFamily: "Jetbrainsmono Regular",
       fontSize: fontSize,
@@ -61,4 +65,34 @@ for (const [x, y] of maze.path) {
   text.x = pixelSize / 2 - text.width / 2 + x * pixelSize;
   text.y = y * pixelSize;
   app.stage.addChild(text);
+
+  letterMap.set(`${x}x${y}`, letter);
 }
+
+const player = new Graphics()
+  .rect(pixelSize, 25 * pixelSize, pixelSize, pixelSize)
+  .fill(0x777777);
+app.stage.addChild(player);
+let playerX = 1;
+let playerY = 25;
+
+window.addEventListener("keydown", (event: KeyboardEvent) => {
+  var upLetter = letterMap.get(`${playerX}x${playerY - 1}`);
+  var downLetter = letterMap.get(`${playerX}x${playerY + 1}`);
+  var rightLetter = letterMap.get(`${playerX + 1}x${playerY}`);
+  var leftLetter = letterMap.get(`${playerX - 1}x${playerY}`);
+
+  if (upLetter && upLetter === event.key) {
+    playerY -= 1;
+    player.y -= pixelSize;
+  } else if (downLetter && downLetter === event.key) {
+    playerY += 1;
+    player.y += pixelSize;
+  } else if (leftLetter && leftLetter === event.key) {
+    playerX -= 1;
+    player.x -= pixelSize;
+  } else if (rightLetter && rightLetter === event.key) {
+    playerX += 1;
+    player.x += pixelSize;
+  }
+});
