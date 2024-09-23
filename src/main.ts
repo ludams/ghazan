@@ -16,6 +16,10 @@ const app = new Application();
 await app.init({ resizeTo: window, backgroundColor: levelColor });
 document.getElementById("app")!.appendChild(app.canvas);
 
+// Developer tools integration
+// @ts-ignore
+globalThis.__PIXI_APP__ = app;
+
 function randomLetter() {
   return letters[Math.floor(rng() * letters.length)];
 }
