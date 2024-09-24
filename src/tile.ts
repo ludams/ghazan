@@ -57,25 +57,79 @@ export class Tile {
 
   enter(app: Application) {
     this.isCurrentPlayerTile = true;
-    this.updateTickListener(app);
+    this.registerListener(app);
   }
 
   exit(app: Application) {
     this.isCurrentPlayerTile = false;
-    this.updateTickListener(app);
+    if (this.visitTimestamps.length === 0) {
+      this.removeListener(app);
+    }
   }
 
-  private updateTickListener(app: Application) {
-    if (this.visitTimestamps.length > 0) {
-      if (!this.addedListener) {
-        this.addedListener = true;
-        app.ticker.add(this.listener);
-      }
-    } else {
-      if (this.addedListener) {
-        this.addedListener = false;
-        app.ticker.remove(this.listener);
-      }
+  convertToLava(app: Application) {
+    let obj = this.graphics;
+    let text = this.text;
+    if (obj === undefined || text === undefined) {
+      return;
+    }
+    obj
+      .clear()
+      .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
+      .fill(0xff0000);
+    obj.removeChild(text);
+    this.removeListener(app);
+    const a = Math.random() * 0.1 + 1.0;
+    const b = Math.random() * 0.1 + 1.0;
+    // slowly make the lava darker
+    const now = Date.now();
+    app.ticker.add(() => {
+      const timeSinceLava = Date.now() - now;
+      const timeBase = 0.9998;
+      let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
+      const chroma = this.getAnimatedValue(0.17, 0.24, timeBase, timeSinceLava);
+      const hue = this.getAnimatedValue(64, 28, timeBase, timeSinceLava);
+
+      lightness =
+        lightness +
+        Math.sin((a * timeSinceLava) / 1000) *
+          Math.cos((b * timeSinceLava) / 1000) *
+          0.1;
+
+      obj
+        .clear()
+        .rect(0, 0, 20, 20)
+        .fill(
+          formatHex({
+            mode: "oklch",
+            l: lightness,
+            c: chroma,
+            h: hue,
+          }),
+        );
+    });
+  }
+
+  private getAnimatedValue(
+    startValue: number,
+    endValue: number,
+    timeBase: number,
+    time: number,
+  ) {
+    return endValue - (endValue - startValue) * timeBase ** time;
+  }
+
+  private registerListener(app: Application) {
+    if (this.visitTimestamps.length > 0 && !this.addedListener) {
+      this.addedListener = true;
+      app.ticker.add(this.listener);
+    }
+  }
+
+  private removeListener(app: Application) {
+    if (this.addedListener) {
+      this.addedListener = false;
+      app.ticker.remove(this.listener);
     }
   }
 

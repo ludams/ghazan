@@ -1,72 +1,11 @@
 import { Application } from "pixi.js";
 import seedrandom, { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
+import { GameState } from "./gameState.ts";
 import { Tile } from "./tile.ts";
 import { GridChunk } from "./maze-generation.ts";
 
 const letters = "abcdefghijklmnopqrstuvwxyz ";
-
-class GameState {
-  game: Game;
-  tiles: Map<string, Tile>;
-  history: Tile[] = [];
-  currentTile: Tile;
-
-  constructor(game: Game, tiles: Map<string, Tile>, startTile: Tile) {
-    this.game = game;
-    this.tiles = tiles;
-    this.currentTile = startTile;
-  }
-
-  start() {
-    for (const tile of this.tiles.values()) {
-      tile.render(this.game.app);
-    }
-    this.currentTile.visit(this.game.app);
-  }
-
-  moveTo(nextTile: Tile) {
-    this.history.push(this.currentTile);
-
-    this.currentTile.exit(this.game.app);
-    nextTile.visit(this.game.app);
-
-    this.currentTile = nextTile;
-  }
-
-  moveBack() {
-    const lastTile = this.history.pop() as Tile;
-
-    this.currentTile.back(this.game.app);
-    lastTile.enter(this.game.app);
-
-    this.currentTile = lastTile;
-  }
-
-  getTile(x: number, y: number): Tile | undefined {
-    return this.tiles.get(`${x},${y}`);
-  }
-
-  getSurroundingTiles(tile: Tile): Tile[] {
-    const { x, y } = tile;
-    return [
-      this.getTile(x, y - 1),
-      this.getTile(x + 1, y),
-      this.getTile(x, y + 1),
-      this.getTile(x - 1, y),
-    ].filter((tile) => tile !== undefined) as Tile[];
-  }
-
-  findNextTile(letter: string) {
-    const surroundingTiles = this.getSurroundingTiles(this.currentTile);
-    return surroundingTiles.find(
-      (tile) =>
-        tile.letter === letter &&
-        (this.history.length === 0 ||
-          tile !== this.history[this.history.length - 1]),
-    );
-  }
-}
 
 export class Game {
   app: Application;
