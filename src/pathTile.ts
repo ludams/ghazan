@@ -98,7 +98,7 @@ export class PathTile {
 
       obj
         .clear()
-        .rect(0, 0, 20, 20)
+        .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
         .fill(
           formatHex({
             mode: "oklch",
