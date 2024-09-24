@@ -1,84 +1,34 @@
 import "./styles.css";
-import { Application, Assets, Graphics, Point, Text } from "pixi.js";
-import seedrandom from "seedrandom";
+import { Application, Assets } from "pixi.js";
+import { Config } from "./config.ts";
+import { Game } from "./game.ts";
 import maze1String from "./mazes/maze1.txt?raw";
 
-const wallColor = 0x000000;
-const levelColor = 0xffffff;
-const pixelSize = 20;
-const fontSize = 15;
-const letters = "abcdefghijklmnopqrstuvwxyz";
+const config: Config = {
+  wallColor: 0x000000,
+  pixelSize: 20,
+  fontSize: 15,
+};
 
-let rng = seedrandom("1337");
 const app = new Application();
 
 Promise.all([
   Assets.load("JetBrainsMono/JetBrainsMono-Regular.woff2"),
-  app.init({ resizeTo: window, backgroundColor: levelColor }),
+  app.init({ resizeTo: window, backgroundColor: config.wallColor }),
 ]).then(() => {
   startApp();
 });
 
 function startApp() {
   document.getElementById("app")!.appendChild(app.canvas);
-
   // Developer tools integration
   // @ts-ignore
   globalThis.__PIXI_APP__ = app;
 
-  function randomLetter() {
-    return letters[Math.floor(rng() * letters.length)];
-  }
+  let game = new Game(app, config);
+  game.importMaze(maze1String as string);
+  game.renderTiles();
 
-  function loadMaze(maze: string) {
-    const walls = [];
-    const pathFields = [];
-    const rows = maze.split("\n");
-    for (let y = 0; y < rows.length; y++) {
-      const row = rows[y];
-      for (let x = 0; x < row.length; x++) {
-        if (row[x] === " ") {
-          pathFields.push([x, y]);
-        } else {
-          walls.push([x, y]);
-        }
-      }
-    }
-    return { walls, path: pathFields };
-  }
-
-  const maze = loadMaze(maze1String as string);
-
-  for (const [x, y] of maze.walls) {
-    const obj = new Graphics({ x: x * pixelSize, y: y * pixelSize })
-      .rect(0, 0, pixelSize, pixelSize)
-      .fill(wallColor);
-    app.stage.addChild(obj);
-  }
-
-  new Point();
-  const letterMap = new Map<string, string>();
-
-  for (const [x, y] of maze.path) {
-    let letter = randomLetter();
-    const text = new Text({
-      text: letter,
-      style: {
-        fontFamily: "Jetbrainsmono Regular",
-        fontSize: fontSize,
-      },
-    });
-    text.x = pixelSize / 2 - text.width / 2 + x * pixelSize;
-    text.y = y * pixelSize;
-    app.stage.addChild(text);
-
-    letterMap.set(`${x}x${y}`, letter);
-  }
-
-  const player = new Graphics()
-    .rect(pixelSize, 25 * pixelSize, pixelSize, pixelSize)
-    .fill(0x777777);
-  app.stage.addChild(player);
   let playerX = 1;
   let playerY = 25;
 
@@ -96,19 +46,15 @@ function startApp() {
     switch (direction) {
       case Direction.Up:
         playerY -= 1;
-        player.y -= pixelSize;
         break;
       case Direction.Down:
         playerY += 1;
-        player.y += pixelSize;
         break;
       case Direction.Left:
         playerX -= 1;
-        player.x -= pixelSize;
         break;
       case Direction.Right:
         playerX += 1;
-        player.x += pixelSize;
         break;
       default:
         break;
@@ -131,10 +77,10 @@ function startApp() {
   };
 
   window.addEventListener("keydown", (event: KeyboardEvent) => {
-    const upLetter = letterMap.get(`${playerX}x${playerY - 1}`);
-    const downLetter = letterMap.get(`${playerX}x${playerY + 1}`);
-    const rightLetter = letterMap.get(`${playerX + 1}x${playerY}`);
-    const leftLetter = letterMap.get(`${playerX - 1}x${playerY}`);
+    const upLetter = game.getTile(playerX, playerY - 1)?.letter;
+    const downLetter = game.getTile(playerX, playerY + 1)?.letter;
+    const rightLetter = game.getTile(playerX + 1, playerY)?.letter;
+    const leftLetter = game.getTile(playerX - 1, playerY)?.letter;
 
     let lastDirection = history[history.length - 1];
     const surroundingLettersWithDirection = [
@@ -156,14 +102,18 @@ function startApp() {
     const nextDirection = nextDirectionsByLetterMap.get(event.key);
 
     if (nextDirection !== undefined) {
+      game.getTile(playerX, playerY)?.exit(app);
       moveByDirection(nextDirection);
+      game.getTile(playerX, playerY)?.visit(app);
       history.push(nextDirection);
       return;
     }
 
     if (event.key === "Backspace" && lastDirection !== Direction.None) {
       const revertedLastDirection = getOppositeDirection(lastDirection);
+      game.getTile(playerX, playerY)?.back(app);
       moveByDirection(revertedLastDirection);
+      game.getTile(playerX, playerY)?.enter(app);
       history.pop();
     }
   });
