@@ -2,7 +2,7 @@ import { formatHex } from "culori";
 import { Application, Graphics, Text, Ticker } from "pixi.js";
 import { Game } from "./game.ts";
 
-export class Tile {
+export class PathTile {
   game: Game;
   x: number;
   y: number;

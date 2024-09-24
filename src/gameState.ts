@@ -1,15 +1,15 @@
 import { Game } from "./game.ts";
-import { Tile } from "./tile.ts";
+import { PathTile } from "./pathTile.ts";
 
 export class GameState {
   game: Game;
-  tiles: Map<string, Tile>;
-  history: Tile[] = [];
-  currentTile: Tile;
-  liquidLavaTiles: Tile[] = [];
-  solidLavaTiles: Map<string, Tile> = new Map();
+  tiles: Map<string, PathTile>;
+  history: PathTile[] = [];
+  currentTile: PathTile;
+  liquidLavaTiles: PathTile[] = [];
+  solidLavaTiles: Map<string, PathTile> = new Map();
 
-  constructor(game: Game, tiles: Map<string, Tile>, startTile: Tile) {
+  constructor(game: Game, tiles: Map<string, PathTile>, startTile: PathTile) {
     this.game = game;
     this.tiles = tiles;
     this.currentTile = startTile;
@@ -21,7 +21,7 @@ export class GameState {
     }
     this.currentTile.visit(this.game.app);
     setTimeout(() => {
-      this.liquidLavaTiles.push(this.getTile(1, 1)!);
+      this.liquidLavaTiles.push(this.getPathTile(1, 1)!);
       setInterval(() => {
         this.spreadLava();
       }, 1000);
@@ -40,7 +40,7 @@ export class GameState {
     console.log(this.liquidLavaTiles.length);
   }
 
-  private spreadLavaToSurroundingTiles(lavaTile: Tile) {
+  private spreadLavaToSurroundingTiles(lavaTile: PathTile) {
     const surroundingTiles = this.getSurroundingTiles(lavaTile);
     for (const tile of surroundingTiles) {
       if (this.solidLavaTiles.has(`${tile.x},${tile.y}`)) {
@@ -51,7 +51,7 @@ export class GameState {
     }
   }
 
-  moveTo(nextTile: Tile) {
+  moveTo(nextTile: PathTile) {
     this.history.push(this.currentTile);
 
     this.currentTile.exit(this.game.app);
@@ -61,7 +61,7 @@ export class GameState {
   }
 
   moveBack() {
-    const lastTile = this.history.pop() as Tile;
+    const lastTile = this.history.pop() as PathTile;
 
     this.currentTile.back(this.game.app);
     lastTile.enter(this.game.app);
@@ -69,18 +69,18 @@ export class GameState {
     this.currentTile = lastTile;
   }
 
-  getTile(x: number, y: number): Tile | undefined {
+  getPathTile(x: number, y: number): PathTile | undefined {
     return this.tiles.get(`${x},${y}`);
   }
 
-  getSurroundingTiles(tile: Tile): Tile[] {
+  getSurroundingTiles(tile: PathTile): PathTile[] {
     const { x, y } = tile;
     return [
-      this.getTile(x, y - 1),
-      this.getTile(x + 1, y),
-      this.getTile(x, y + 1),
-      this.getTile(x - 1, y),
-    ].filter((tile) => tile !== undefined) as Tile[];
+      this.getPathTile(x, y - 1),
+      this.getPathTile(x + 1, y),
+      this.getPathTile(x, y + 1),
+      this.getPathTile(x - 1, y),
+    ].filter((tile) => tile !== undefined) as PathTile[];
   }
 
   findNextTile(letter: string) {

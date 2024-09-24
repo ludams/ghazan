@@ -2,7 +2,7 @@ import { Application } from "pixi.js";
 import seedrandom, { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
 import { GameState } from "./gameState.ts";
-import { Tile } from "./tile.ts";
+import { PathTile } from "./pathTile.ts";
 import { GridChunk } from "./maze-generation.ts";
 
 const letters = "abcdefghijklmnopqrstuvwxyz ";
@@ -21,8 +21,8 @@ export class Game {
     return letters[Math.floor(rng() * letters.length)];
   }
 
-  createTile(x: number, y: number, letter: string): Tile {
-    return new Tile(this, x, y, letter);
+  createPathTile(x: number, y: number, letter: string): PathTile {
+    return new PathTile(this, x, y, letter);
   }
 
   private generateMazeForIndex(index: number) {
@@ -30,7 +30,7 @@ export class Game {
     const newGridChunk = new GridChunk(index, this.config);
     newGridChunk.generateMaze();
     return newGridChunk.corridorMazePixels.map((pixel) =>
-      this.createTile(pixel.x + 1, pixel.y + 1, Game.randomLetter(rng)),
+      this.createPathTile(pixel.x + 1, pixel.y + 1, Game.randomLetter(rng)),
     );
   }
 
