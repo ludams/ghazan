@@ -11,7 +11,7 @@ export const config: Config = {
 
   // Maze Generation Configs
   chunkCellsPerGrid: 16,
-  deadEndWallBreakRatio: 0.25,
+  deadEndWallBreakRatio: 0.75,
   chunkConnectingWallBreakRatio: 0.25,
   chunkGenerationDistance: 5,
 };

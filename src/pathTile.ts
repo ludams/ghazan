@@ -67,48 +67,6 @@ export class PathTile {
     }
   }
 
-  convertToLava() {
-    let obj = this.graphics;
-    let text = this.text;
-    if (obj === undefined || text === undefined) {
-      return;
-    }
-    obj
-      .clear()
-      .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
-      .fill(0xff0000);
-    obj.removeChild(text);
-    this.removeListener();
-    const a = Math.random() * 0.1 + 1.0;
-    const b = Math.random() * 0.1 + 1.0;
-    const now = Date.now();
-    this.game.app.ticker.add(() => {
-      const timeSinceLava = Date.now() - now;
-      const timeBase = 0.9998;
-      let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
-      const chroma = this.getAnimatedValue(0.17, 0.24, timeBase, timeSinceLava);
-      const hue = this.getAnimatedValue(64, 28, timeBase, timeSinceLava);
-
-      lightness =
-        lightness +
-        Math.sin((a * timeSinceLava) / 1000) *
-          Math.cos((b * timeSinceLava) / 1000) *
-          0.1;
-
-      obj
-        .clear()
-        .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
-        .fill(
-          formatHex({
-            mode: "oklch",
-            l: lightness,
-            c: chroma,
-            h: hue,
-          }),
-        );
-    });
-  }
-
   private getAnimatedValue(
     startValue: number,
     endValue: number,
@@ -168,15 +126,18 @@ export class PathTile {
   }
 
   private getColorForSnake(timeSinceLastVisit: number) {
-    const startChroma = 0.25;
-    const endChroma = this.isCurrentPlayerTile ? 0.2 : 0.15;
-    const chroma =
-      endChroma + (startChroma - endChroma) * 0.999 ** timeSinceLastVisit;
-    const startLightness = 0.85;
-    const endLightness = this.isCurrentPlayerTile ? 0.85 : 0.7;
-    const lightness =
-      endLightness -
-      (endLightness - startLightness) * 0.999 ** timeSinceLastVisit;
+    const chroma = this.getAnimatedValue(
+      0.25,
+      this.isCurrentPlayerTile ? 0.2 : 0.15,
+      0.999,
+      timeSinceLastVisit,
+    );
+    const lightness = this.getAnimatedValue(
+      0.85,
+      this.isCurrentPlayerTile ? 0.85 : 0.7,
+      0.999,
+      timeSinceLastVisit,
+    );
 
     return formatHex({
       mode: "oklch",
