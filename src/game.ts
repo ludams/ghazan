@@ -34,6 +34,13 @@ export class Game {
     );
   }
 
+  private addTilesToMap(
+    tilesMap: Map<string, PathTile>,
+    tilesToAdd: PathTile[],
+  ) {
+    tilesToAdd.forEach((tile) => tilesMap.set(`${tile.x},${tile.y}`, tile));
+  }
+
   start(x: number, y: number) {
     this.resetGameState(x, y);
 
@@ -44,15 +51,29 @@ export class Game {
   }
 
   private resetGameState(x: number, y: number) {
-    const tiles = new Map(
-      this.generateMazeForIndex(0).map((tile) => [`${tile.x},${tile.y}`, tile]),
-    );
+    const initiallyRenderedChunkCount = this.config.chunkGenerationDistance;
+    const tiles = this.createInitialTilesMap(initiallyRenderedChunkCount);
+
     let startTile = tiles.get(`${x},${y}`);
     if (startTile === undefined) {
       throw new Error(`Tile at ${x},${y} not found`);
     }
-    this.gameState = new GameState(this, tiles, startTile);
+    this.gameState = new GameState(
+      this,
+      tiles,
+      startTile,
+      initiallyRenderedChunkCount,
+    );
     this.gameState.start();
+  }
+
+  private createInitialTilesMap(initialChunkCount: number) {
+    const tilesByChunkIndex = Array(initialChunkCount)
+      .fill(0)
+      .map((_, index) => this.generateMazeForIndex(index));
+    const tiles = new Map();
+    this.addTilesToMap(tiles, tilesByChunkIndex.flat());
+    return tiles;
   }
 
   handleInput(letter: string) {
@@ -64,8 +85,28 @@ export class Game {
 
     if (nextTile !== undefined) {
       gameState.moveTo(nextTile);
+      this.renderNextChunkIfNecessary(gameState);
     } else if (letter === "Backspace" && history.length > 0) {
       gameState.moveBack();
     }
+  }
+
+  private renderNextChunkIfNecessary(gameState: GameState) {
+    const tilesPerChunk = this.config.chunkCellsPerGrid * 2;
+    const shouldRenderNextChunk =
+      gameState.currentTile.x / tilesPerChunk >
+      gameState.renderedChunksCount - this.config.chunkGenerationDistance;
+    if (shouldRenderNextChunk) {
+      this.renderNextChunk(gameState);
+    }
+  }
+
+  private renderNextChunk(gameState: GameState) {
+    const newTilesToRender = this.generateMazeForIndex(
+      gameState.renderedChunksCount,
+    );
+    this.addTilesToMap(gameState.tiles, newTilesToRender);
+    gameState.renderedChunksCount++;
+    newTilesToRender.forEach((tile) => tile.render(this.app));
   }
 }

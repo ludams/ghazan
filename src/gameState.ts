@@ -8,11 +8,18 @@ export class GameState {
   currentTile: PathTile;
   liquidLavaTiles: PathTile[] = [];
   solidLavaTiles: Map<string, PathTile> = new Map();
+  renderedChunksCount: number;
 
-  constructor(game: Game, tiles: Map<string, PathTile>, startTile: PathTile) {
+  constructor(
+    game: Game,
+    tiles: Map<string, PathTile>,
+    startTile: PathTile,
+    renderedChunksCount: number,
+  ) {
     this.game = game;
     this.tiles = tiles;
     this.currentTile = startTile;
+    this.renderedChunksCount = renderedChunksCount;
   }
 
   start() {

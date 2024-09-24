@@ -11,4 +11,5 @@ export type Config = {
   chunkCellsPerGrid: number;
   deadEndWallBreakRatio: number;
   chunkConnectingWallBreakRatio: number;
+  chunkGenerationDistance: number;
 };
