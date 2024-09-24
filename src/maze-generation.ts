@@ -85,16 +85,6 @@ export class GridChunk {
       }
       this.mazePixels.push(column);
     }
-
-    console.debug(
-      this.mazePixels
-        .map((pixelCol) =>
-          pixelCol
-            .map((pixel) => (pixel.type === "corridor" ? "X" : " "))
-            .join(""),
-        )
-        .join("\n"),
-    );
   }
 
   private getNeighbors(cell: GridCell): GridCell[] {
@@ -167,9 +157,7 @@ export class GridChunk {
     let lfsNeighborsToVisitStack = [initialCell];
     let lastCell: GridCell | undefined = undefined;
 
-    let debugCounter = 0;
     while (lfsNeighborsToVisitStack.length > 0) {
-      debugCounter++;
       const currentCell = lfsNeighborsToVisitStack.pop()!;
 
       const neighbors = this.getUnvisitedNeighbors(currentCell);
@@ -201,16 +189,6 @@ export class GridChunk {
     }
 
     this.openUpWallTowardsNextChunk();
-
-    console.debug(
-      this.mazePixels
-        .map((pixelCol) =>
-          pixelCol
-            .map((pixel) => (pixel.type === "corridor" ? "X" : " "))
-            .join(""),
-        )
-        .join("\n"),
-    );
   }
 }
 
