@@ -3,7 +3,12 @@
 // const pixelSize = 20;
 // const fontSize = 15;
 export type Config = {
+  baseSeed: string;
   wallColor: number;
   pixelSize: number;
   fontSize: number;
+
+  chunkCellsPerGrid: number;
+  deadEndWallBreakRatio: number;
+  chunkConnectingWallBreakRatio: number;
 };

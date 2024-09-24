@@ -1,8 +1,8 @@
 import { Application } from "pixi.js";
 import seedrandom, { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
-import maze1String from "./mazes/maze1.txt?raw";
 import { Tile } from "./tile.ts";
+import { GridChunk } from "./maze-generation.ts";
 
 const letters = "abcdefghijklmnopqrstuvwxyz ";
 
@@ -86,29 +86,13 @@ export class Game {
     return new Tile(this, x, y, letter);
   }
 
-  importMaze(maze: string) {
-    let rng = seedrandom("1337");
-
-    const tiles = new Map<string, Tile>();
-
-    const rows = maze.split("\n");
-    for (let y = 0; y < rows.length; y++) {
-      const row = rows[y];
-      for (let x = 0; x < row.length; x++) {
-        if (row[x] === " ") {
-          let letter: string;
-          if (x === 1 && y === 1) {
-            letter = " ";
-          } else {
-            letter = Game.randomLetter(rng);
-          }
-          let tile = this.createTile(x, y, letter);
-          tiles.set(`${x},${y}`, tile);
-        } else {
-        }
-      }
-    }
-    return tiles;
+  private generateMazeForIndex(index: number) {
+    const rng = seedrandom(this.config.baseSeed + "Letters:" + index);
+    const newGridChunk = new GridChunk(index, this.config);
+    newGridChunk.generateMaze();
+    return newGridChunk.corridorMazePixels.map((pixel) =>
+      this.createTile(pixel.x + 1, pixel.y + 1, Game.randomLetter(rng)),
+    );
   }
 
   start(x: number, y: number) {
@@ -121,7 +105,9 @@ export class Game {
   }
 
   private resetGameState(x: number, y: number) {
-    let tiles = this.importMaze(maze1String as string);
+    const tiles = new Map(
+      this.generateMazeForIndex(0).map((tile) => [`${tile.x},${tile.y}`, tile]),
+    );
     let startTile = tiles.get(`${x},${y}`);
     if (startTile === undefined) {
       throw new Error(`Tile at ${x},${y} not found`);
