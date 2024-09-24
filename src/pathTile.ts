@@ -1,5 +1,5 @@
 import { formatHex } from "culori";
-import { Application, Graphics, Text, Ticker } from "pixi.js";
+import { Graphics, Text, Ticker } from "pixi.js";
 import { Game } from "./game.ts";
 
 export class PathTile {
@@ -22,7 +22,7 @@ export class PathTile {
     this.letter = letter;
   }
 
-  render(app: Application) {
+  render() {
     const pixelSize = this.game.config.pixelSize;
     const obj = new Graphics({ x: this.x * pixelSize, y: this.y * pixelSize });
     const text = new Text({
@@ -39,35 +39,35 @@ export class PathTile {
     }
 
     obj.addChild(text);
-    app.stage.addChild(obj);
+    this.game.app.stage.addChild(obj);
 
     this.graphics = obj;
     this.text = text;
   }
 
-  visit(app: Application) {
+  visit() {
     this.visitTimestamps.push(Date.now());
-    this.enter(app);
+    this.enter();
   }
 
-  back(app: Application) {
+  back() {
     this.backTimestamps.push(Date.now());
-    this.exit(app);
+    this.exit();
   }
 
-  enter(app: Application) {
+  enter() {
     this.isCurrentPlayerTile = true;
-    this.registerListener(app);
+    this.registerListener();
   }
 
-  exit(app: Application) {
+  exit() {
     this.isCurrentPlayerTile = false;
     if (this.visitTimestamps.length === 0) {
-      this.removeListener(app);
+      this.removeListener();
     }
   }
 
-  convertToLava(app: Application) {
+  convertToLava() {
     let obj = this.graphics;
     let text = this.text;
     if (obj === undefined || text === undefined) {
@@ -78,12 +78,11 @@ export class PathTile {
       .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
       .fill(0xff0000);
     obj.removeChild(text);
-    this.removeListener(app);
+    this.removeListener();
     const a = Math.random() * 0.1 + 1.0;
     const b = Math.random() * 0.1 + 1.0;
-    // slowly make the lava darker
     const now = Date.now();
-    app.ticker.add(() => {
+    this.game.app.ticker.add(() => {
       const timeSinceLava = Date.now() - now;
       const timeBase = 0.9998;
       let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
@@ -119,17 +118,17 @@ export class PathTile {
     return endValue - (endValue - startValue) * timeBase ** time;
   }
 
-  private registerListener(app: Application) {
+  private registerListener() {
     if (this.visitTimestamps.length > 0 && !this.addedListener) {
       this.addedListener = true;
-      app.ticker.add(this.listener);
+      this.game.app.ticker.add(this.listener);
     }
   }
 
-  private removeListener(app: Application) {
+  private removeListener() {
     if (this.addedListener) {
       this.addedListener = false;
-      app.ticker.remove(this.listener);
+      this.game.app.ticker.remove(this.listener);
     }
   }
 

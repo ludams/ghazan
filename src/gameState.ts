@@ -5,6 +5,7 @@ export class GameState {
   game: Game;
   tiles: Map<string, PathTile>;
   history: PathTile[] = [];
+  startTile: PathTile;
   currentTile: PathTile;
   liquidLavaTiles: PathTile[] = [];
   solidLavaTiles: Map<string, PathTile> = new Map();
@@ -18,17 +19,20 @@ export class GameState {
   ) {
     this.game = game;
     this.tiles = tiles;
+    this.startTile = startTile;
     this.currentTile = startTile;
     this.renderedChunksCount = renderedChunksCount;
   }
 
   start() {
     for (const tile of this.tiles.values()) {
-      tile.render(this.game.app);
+      tile.render();
     }
-    this.currentTile.visit(this.game.app);
+    this.currentTile.visit();
     setTimeout(() => {
-      this.liquidLavaTiles.push(this.getPathTile(1, 1)!);
+      this.liquidLavaTiles.push(this.startTile);
+      this.startTile.convertToLava();
+
       setInterval(() => {
         this.spreadLava();
       }, 1000);
@@ -44,7 +48,6 @@ export class GameState {
     for (const lavaTile of lavaTiles) {
       this.spreadLavaToSurroundingTiles(lavaTile);
     }
-    console.log(this.liquidLavaTiles.length);
   }
 
   private spreadLavaToSurroundingTiles(lavaTile: PathTile) {
@@ -53,7 +56,7 @@ export class GameState {
       if (this.solidLavaTiles.has(`${tile.x},${tile.y}`)) {
         continue;
       }
-      tile.convertToLava(this.game.app);
+      tile.convertToLava();
       this.liquidLavaTiles.push(tile);
     }
   }
@@ -61,8 +64,8 @@ export class GameState {
   moveTo(nextTile: PathTile) {
     this.history.push(this.currentTile);
 
-    this.currentTile.exit(this.game.app);
-    nextTile.visit(this.game.app);
+    this.currentTile.exit();
+    nextTile.visit();
 
     this.currentTile = nextTile;
   }
@@ -70,8 +73,8 @@ export class GameState {
   moveBack() {
     const lastTile = this.history.pop() as PathTile;
 
-    this.currentTile.back(this.game.app);
-    lastTile.enter(this.game.app);
+    this.currentTile.back();
+    lastTile.enter();
 
     this.currentTile = lastTile;
   }

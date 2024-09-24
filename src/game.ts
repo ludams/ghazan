@@ -107,6 +107,6 @@ export class Game {
     );
     this.addTilesToMap(gameState.tiles, newTilesToRender);
     gameState.renderedChunksCount++;
-    newTilesToRender.forEach((tile) => tile.render(this.app));
+    newTilesToRender.forEach((tile) => tile.render());
   }
 }

@@ -10,7 +10,7 @@ export const config: Config = {
   baseSeed: "1337",
 
   // Maze Generation Configs
-  chunkCellsPerGrid: 19,
+  chunkCellsPerGrid: 16,
   deadEndWallBreakRatio: 0.25,
   chunkConnectingWallBreakRatio: 0.25,
   chunkGenerationDistance: 5,
