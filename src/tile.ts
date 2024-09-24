@@ -26,7 +26,7 @@ export class Tile {
     const pixelSize = this.game.config.pixelSize;
     const obj = new Graphics({ x: this.x * pixelSize, y: this.y * pixelSize });
     const text = new Text({
-      text: this.letter,
+      text: this.letter === " " ? "␣" : this.letter,
       style: {
         fontFamily: "Jetbrainsmono Regular",
         fontSize: this.game.config.fontSize,
@@ -34,6 +34,9 @@ export class Tile {
       },
     });
     text.x = pixelSize / 2 - text.width / 2;
+    if (this.letter === " ") {
+      text.y = -0.15 * pixelSize;
+    }
 
     obj.addChild(text);
     app.stage.addChild(obj);
