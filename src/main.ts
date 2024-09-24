@@ -6,7 +6,7 @@ import { Game } from "./game.ts";
 export const config: Config = {
   wallColor: 0x000000,
   pixelSize: 25,
-  fontSize: 15,
+  fontSize: 20,
   baseSeed: "1337",
 
   // Maze Generation Configs
