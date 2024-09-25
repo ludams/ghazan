@@ -40,8 +40,30 @@ export class Game {
     if (gameState === null) {
       throw new Error("Game state is null");
     }
+
+    let currentSong = "musicIntro";
+    const playRandomMusic = () => {
+      const random = Math.random();
+      if (random < 0.5) {
+        currentSong = "musicLoop1";
+        sound.play("musicLoop1", { complete: playRandomMusic, volume: 0.5 });
+      } else {
+        currentSong = "musicLoop2";
+        sound.play("musicLoop2", { complete: playRandomMusic, volume: 0.5 });
+      }
+    };
+
+    sound.play("musicIntro", {
+      volume: 0.5,
+      complete: () => {
+        playRandomMusic();
+      },
+    });
+
     gameState.onPlayerDeath((score) => {
       gameState.destroy();
+      sound.stop(currentSong);
+      sound.play("death");
       this.displayGameOver(score);
     });
 

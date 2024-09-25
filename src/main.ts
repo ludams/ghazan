@@ -53,24 +53,11 @@ function startApp() {
   sound.add("return4", "sounds/return_4.mp3");
   sound.add("return5", "sounds/return_5.mp3");
 
+  sound.add("death", "sounds/death.mp3");
+
   sound.add("musicIntro", "sounds/the_maze_intro.wav");
   sound.add("musicLoop1", "sounds/the_maze_loop.wav");
   sound.add("musicLoop2", "sounds/the_maze_loop_2.wav");
-
-  const playRandomMusic = () => {
-    const random = Math.random();
-    if (random < 0.5) {
-      sound.play("musicLoop1", { complete: playRandomMusic });
-    } else {
-      sound.play("musicLoop2", { complete: playRandomMusic });
-    }
-  };
-
-  sound.play("musicIntro", {
-    complete: () => {
-      playRandomMusic();
-    },
-  });
 
   // Developer tools integration
   // @ts-ignore
