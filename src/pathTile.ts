@@ -1,5 +1,5 @@
 import { formatHex } from "culori";
-import { Graphics, Text, UPDATE_PRIORITY } from "pixi.js";
+import { Graphics, Text } from "pixi.js";
 import { Game } from "./game.ts";
 
 export class PathTile {
