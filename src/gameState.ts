@@ -448,11 +448,19 @@ export class GameState {
     return undefined;
   }
 
-  generateRandomString(length: number) {
+  generateRandomString(blockedCharacters: string[], length: number) {
     const charset = "abcdefghijklmnopqrstuvwxyz ";
+    const reducedCharsetForFirstLetter = charset
+      .split("")
+      .filter((char) => !blockedCharacters.includes(char));
     let result = "";
 
-    for (let i = 0; i < length; i++) {
+    const firstLetterCharIndex = Math.floor(
+      this.randomWordGenerator() * reducedCharsetForFirstLetter.length,
+    );
+    result += reducedCharsetForFirstLetter[firstLetterCharIndex];
+
+    for (let i = 1; i < length; i++) {
       const index = Math.floor(this.randomWordGenerator() * charset.length);
       result += charset[index];
     }
@@ -466,13 +474,65 @@ export class GameState {
     crossingsToPass: number,
   ) {
     const allSurroundingTiles = this.getSurroundingTiles(crossingTile);
+
+    let tilePathsToGenerateWordsFor = this.getPathsToFollowNext(
+      allSurroundingTiles,
+      comingFromTile,
+      crossingTile,
+    );
+
+    tilePathsToGenerateWordsFor.forEach((pathTiles) => {
+      const lastTile = pathTiles[pathTiles.length - 1];
+      const endsInDeadEnd = this.getSurroundingTiles(lastTile).length === 1;
+
+      if (pathTiles[0].letter === undefined) {
+        // get restrictions for beginning (current crossing) and ending letters (next crossing)
+        let chosenWord = this.getRandomWordsOfTotalLengthWithConstraints(
+          pathTiles.length - (endsInDeadEnd ? 0 : 1),
+          allSurroundingTiles
+            .map((tile) => tile.letter)
+            .filter((letter): letter is string => letter !== undefined),
+          this.getSurroundingTiles(pathTiles[pathTiles.length - 1])
+            .map((tile) => tile.letter)
+            .filter((letter): letter is string => letter !== undefined),
+        );
+
+        if (chosenWord === undefined) {
+          chosenWord = this.generateRandomString(
+            allSurroundingTiles
+              .map((tile) => tile.letter)
+              .filter((tile): tile is string => tile !== undefined),
+            pathTiles.length - 1,
+          );
+        }
+
+        chosenWord += " ";
+
+        pathTiles.forEach((tile, index) => {
+          tile.setLetter(chosenWord.charAt(index));
+        });
+      }
+
+      if (!endsInDeadEnd && crossingsToPass > 1) {
+        this.renderNextWords(
+          pathTiles[pathTiles.length - 1],
+          pathTiles[pathTiles.length - 2],
+          crossingsToPass - 1,
+        );
+      }
+    });
+  }
+
+  private getPathsToFollowNext(
+    allSurroundingTiles: PathTile[],
+    comingFromTile: PathTile | null,
+    crossingTile: PathTile,
+  ) {
+    let tilePathsToGenerateWordsFor = [];
     const nextPossibleTilesToFollow = allSurroundingTiles
       .filter((tile) => tile !== comingFromTile)
       .filter((tile) => tile.x >= 1);
-
     let duplicateSortedOut = false;
-
-    let tilePathsToGenerateWordsFor = [];
     for (const tile of nextPossibleTilesToFollow) {
       const tilesTillIncludingNextCrossing: PathTile[] = [];
 
@@ -503,41 +563,6 @@ export class GameState {
       }
       tilePathsToGenerateWordsFor.push(tilesTillIncludingNextCrossing);
     }
-
-    tilePathsToGenerateWordsFor.forEach((pathTiles) => {
-      const lastTile = pathTiles[pathTiles.length - 1];
-      const endsInDeadEnd = this.getSurroundingTiles(lastTile).length === 1;
-
-      if (pathTiles[0].letter === undefined) {
-        // get restrictions for beginning (current crossing) and ending letters (next crossing)
-        let chosenWord = this.getRandomWordsOfTotalLengthWithConstraints(
-          pathTiles.length - (endsInDeadEnd ? 0 : 1),
-          allSurroundingTiles
-            .map((tile) => tile.letter)
-            .filter((letter): letter is string => letter !== undefined),
-          this.getSurroundingTiles(pathTiles[pathTiles.length - 1])
-            .map((tile) => tile.letter)
-            .filter((letter): letter is string => letter !== undefined),
-        );
-
-        if (chosenWord === undefined) {
-          chosenWord = this.generateRandomString(pathTiles.length - 1);
-        }
-
-        chosenWord += " ";
-
-        pathTiles.forEach((tile, index) => {
-          tile.setLetter(chosenWord.charAt(index));
-        });
-      }
-
-      if (!endsInDeadEnd && crossingsToPass > 1) {
-        this.renderNextWords(
-          pathTiles[pathTiles.length - 1],
-          pathTiles[pathTiles.length - 2],
-          crossingsToPass - 1,
-        );
-      }
-    });
+    return tilePathsToGenerateWordsFor;
   }
 }
