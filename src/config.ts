@@ -18,5 +18,5 @@ export type Config = {
   chunkConnectingWallBreakRatio: number;
   chunkGenerationDistance: number;
 
-  crossingsToPreFillWithWords: 2;
+  crossingsToPreFillWithWords: number;
 };

@@ -20,7 +20,7 @@ export const config: Config = {
   chunkConnectingWallBreakRatio: 0.25,
   chunkGenerationDistance: 5,
 
-  crossingsToPreFillWithWords: 2,
+  crossingsToPreFillWithWords: 3,
 };
 
 const app = new Application();
