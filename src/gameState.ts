@@ -394,6 +394,9 @@ export class GameState {
     blockedBeginnings: string[],
     blockedEndings: string[],
   ): string | undefined {
+    if (totalLength === 1) {
+      return this.generateRandomString(blockedBeginnings, 1);
+    }
     if (englishWordsMap.has(totalLength)) {
       const possibleExactLengthWord = englishWordsMap
         .get(totalLength)!
