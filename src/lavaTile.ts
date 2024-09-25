@@ -7,68 +7,90 @@ export class LavaTile {
   x: number;
   y: number;
   heat: number = 0;
+  graphics: Graphics;
+  listener: (() => void) | null = null;
 
   constructor(game: Game, x: number, y: number) {
     this.game = game;
     this.x = x;
     this.y = y;
+    this.graphics = new Graphics({
+      x: this.x * this.game.config.pixelSize,
+      y: this.y * this.game.config.pixelSize,
+    });
   }
 
   increaseHeat(heatDelta: number) {
     const previousHeat = this.heat;
     this.heat = Math.min(1, this.heat + heatDelta);
-    if (this.heat >= 1 && previousHeat < 1) {
+    if (this.heat >= 1 && previousHeat < 1 && !this.isTileOutsideOfView()) {
       this.render();
     }
   }
 
-  debug(color: string) {
-    const pixelSize = this.game.config.pixelSize;
-    let obj = new Graphics({ x: this.x * pixelSize, y: this.y * pixelSize })
-      .rect(0, 0, pixelSize, pixelSize)
-      .fill(color);
-    setTimeout(() => {
-      this.game.app.stage.removeChild(obj);
-    }, 3000);
-    this.game.app.stage.addChild(obj);
-  }
-
   render() {
     const pixelSize = this.game.config.pixelSize;
-    const obj = new Graphics({ x: this.x * pixelSize, y: this.y * pixelSize })
-      .rect(0, 0, pixelSize, pixelSize)
-      .fill(0xff0000);
-    this.game.app.stage.addChild(obj);
 
     const a = Math.random() * 0.1 + 1.0;
     const b = Math.random() * 0.1 + 1.0;
+
+    this.graphics
+      .rect(0, 0, pixelSize, pixelSize)
+      .fill(this.computeLavaColor(0, a, b));
+
     const now = Date.now();
 
-    this.game.app.ticker.add(() => {
-      const timeSinceLava = Date.now() - now;
-      const timeBase = 0.9998;
-      let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
-      const chroma = this.getAnimatedValue(0.17, 0.24, timeBase, timeSinceLava);
-      const hue = this.getAnimatedValue(64, 28, timeBase, timeSinceLava);
-
-      lightness =
-        lightness +
-        Math.sin((a * timeSinceLava) / 1000) *
-          Math.cos((b * timeSinceLava) / 1000) *
-          0.1;
-
-      obj
+    let listener = () => {
+      if (this.isTileOutsideOfView()) {
+        this.removeListener();
+        return;
+      }
+      let color = this.computeLavaColor(Date.now() - now, a, b);
+      this.graphics
         .clear()
         .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
-        .fill(
-          formatHex({
-            mode: "oklch",
-            l: lightness,
-            c: chroma,
-            h: hue,
-          }),
-        );
+        .fill(color);
+    };
+    this.game.app.ticker.add(listener);
+    this.listener = listener;
+  }
+
+  private computeLavaColor(timeSinceLava: number, a: number, b: number) {
+    const timeBase = 0.9998;
+    let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
+    const chroma = this.getAnimatedValue(0.17, 0.24, timeBase, timeSinceLava);
+    const hue = this.getAnimatedValue(64, 28, timeBase, timeSinceLava);
+
+    lightness =
+      lightness +
+      Math.sin((a * timeSinceLava) / 1000) *
+        Math.cos((b * timeSinceLava) / 1000) *
+        0.1;
+
+    let color = formatHex({
+      mode: "oklch",
+      l: lightness,
+      c: chroma,
+      h: hue,
     });
+    return color;
+  }
+
+  private removeListener() {
+    if (this.listener !== null) {
+      this.game.app.ticker.remove(this.listener);
+      this.listener = null;
+    }
+  }
+
+  private isTileOutsideOfView() {
+    const playerX = this.game.gameState?.currentTile.x;
+    if (playerX === undefined) {
+      return false;
+    }
+    const tileX = this.x;
+    const maxPadding = this.game.config.maxGameTilePaddingLeft;
+    return tileX < playerX - maxPadding - 15;
   }
 
   private getAnimatedValue(
@@ -78,5 +100,10 @@ export class LavaTile {
     time: number,
   ) {
     return endValue - (endValue - startValue) * timeBase ** time;
+  }
+
+  destroy() {
+    this.graphics.destroy();
+    this.removeListener();
   }
 }

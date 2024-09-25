@@ -1,9 +1,9 @@
-import { Application } from "pixi.js";
+import { Application, Text } from "pixi.js";
 import { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
 import { GameState } from "./gameState.ts";
-import { PathTile } from "./pathTile.ts";
 import { GridChunk } from "./maze-generation.ts";
+import { PathTile } from "./pathTile.ts";
 
 const letters = "abcdefghijklmnopqrstuvwxyz ";
 
@@ -33,20 +33,46 @@ export class Game {
     );
   }
 
-  private addTilesToMap(
-    tilesMap: Map<string, PathTile>,
-    tilesToAdd: PathTile[],
-  ) {
-    tilesToAdd.forEach((tile) => tilesMap.set(`${tile.x},${tile.y}`, tile));
-  }
-
   start(x: number, y: number) {
     this.resetGameState(x, y);
+    let gameState = this.gameState;
+    if (gameState === null) {
+      throw new Error("Game state is null");
+    }
+    gameState.onPlayerDeath((score) => {
+      gameState.destroy();
+      this.displayGameOver(score);
+    });
 
     window.addEventListener("keydown", (event: KeyboardEvent) => {
       const enteredLetter = event.key;
       this.handleInput(enteredLetter);
     });
+  }
+
+  displayGameOver(score: number) {
+    const gameOverText = new Text({
+      text: "Game Over",
+      style: {
+        fontFamily: "Jetbrainsmono Regular",
+        fontSize: this.config.fontSize,
+        fill: 0xffffff,
+      },
+    });
+    gameOverText.x = this.app.screen.width / 2 - gameOverText.width / 2;
+    gameOverText.y = this.app.screen.height / 2 - gameOverText.height / 2;
+    const scoreText = new Text({
+      text: `Score: ${score}`,
+      style: {
+        fontFamily: "Jetbrainsmono Regular",
+        fontSize: this.config.fontSize,
+        fill: 0xffffff,
+      },
+    });
+    scoreText.x = this.app.screen.width / 2 - scoreText.width / 2;
+    scoreText.y = this.app.screen.height / 2 + scoreText.height;
+    this.app.stage.addChild(gameOverText);
+    this.app.stage.addChild(scoreText);
   }
 
   private resetGameState(x: number, y: number) {
@@ -67,12 +93,12 @@ export class Game {
   }
 
   private createInitialTilesMap(initialChunkCount: number) {
-    const tilesByChunkIndex = Array(initialChunkCount)
-      .fill(0)
-      .map((_, index) => this.generateMazeForIndex(index));
-    const tiles = new Map();
-    this.addTilesToMap(tiles, tilesByChunkIndex.flat());
-    return tiles;
+    return new Map<string, PathTile>(
+      Array(initialChunkCount)
+        .fill(0)
+        .flatMap((_, index) => this.generateMazeForIndex(index))
+        .map((tile) => [`${tile.x},${tile.y}`, tile]),
+    );
   }
 
   handleInput(letter: string) {
@@ -104,7 +130,7 @@ export class Game {
     const newTilesToRender = this.generateMazeForIndex(
       gameState.renderedChunksCount,
     );
-    this.addTilesToMap(gameState.tiles, newTilesToRender);
+    gameState.addPathTiles(newTilesToRender);
     gameState.renderedChunksCount++;
     newTilesToRender.forEach((tile) => tile.render());
   }

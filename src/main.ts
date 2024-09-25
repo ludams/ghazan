@@ -7,7 +7,12 @@ export const config: Config = {
   wallColor: 0x000000,
   pixelSize: 25,
   fontSize: 20,
-  baseSeed: "1337",
+  baseSeed: "1337b",
+
+  minGameTilePaddingLeft: 15,
+  maxGameTilePaddingLeft: 20,
+  springForce: 0.01,
+  lavaStartOffset: 7,
 
   // Maze Generation Configs
   chunkCellsPerGrid: 16,
@@ -32,5 +37,5 @@ function startApp() {
   globalThis.__PIXI_APP__ = app;
 
   let game = new Game(app, config);
-  game.start(1, 1);
+  game.start(1, config.chunkCellsPerGrid - 1);
 }
