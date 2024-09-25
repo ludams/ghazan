@@ -1,4 +1,5 @@
 import "./styles.css";
+import { sound } from "@pixi/sound";
 import { Application, Assets } from "pixi.js";
 import { Config } from "./config.ts";
 import { Game } from "./game.ts";
@@ -34,6 +35,43 @@ Promise.all([
 
 function startApp() {
   document.getElementById("app")!.appendChild(app.canvas);
+  sound.add("pick1", "sounds/pick_1.mp3");
+  sound.add("pick2", "sounds/pick_2.mp3");
+  sound.add("pick3", "sounds/pick_3.mp3");
+  sound.add("pick4", "sounds/pick_4.mp3");
+  sound.add("pick5", "sounds/pick_5.mp3");
+  sound.add("pick6", "sounds/pick_6.mp3");
+
+  sound.add("error1", "sounds/error_1.mp3");
+  sound.add("error2", "sounds/error_2.mp3");
+  sound.add("error3", "sounds/error_3.mp3");
+  sound.add("error4", "sounds/error_4.mp3");
+
+  sound.add("return1", "sounds/return_1.mp3");
+  sound.add("return2", "sounds/return_2.mp3");
+  sound.add("return3", "sounds/return_3.mp3");
+  sound.add("return4", "sounds/return_4.mp3");
+  sound.add("return5", "sounds/return_5.mp3");
+
+  sound.add("musicIntro", "sounds/the_maze_intro.wav");
+  sound.add("musicLoop1", "sounds/the_maze_loop.wav");
+  sound.add("musicLoop2", "sounds/the_maze_loop_2.wav");
+
+  const playRandomMusic = () => {
+    const random = Math.random();
+    if (random < 0.5) {
+      sound.play("musicLoop1", { complete: playRandomMusic });
+    } else {
+      sound.play("musicLoop2", { complete: playRandomMusic });
+    }
+  };
+
+  sound.play("musicIntro", {
+    complete: () => {
+      playRandomMusic();
+    },
+  });
+
   // Developer tools integration
   // @ts-ignore
   globalThis.__PIXI_APP__ = app;

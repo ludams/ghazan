@@ -1,3 +1,4 @@
+import { sound } from "@pixi/sound";
 import { Application, Text } from "pixi.js";
 import { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
@@ -109,10 +110,14 @@ export class Game {
     const nextTile = gameState.findNextTile(letter);
 
     if (nextTile !== undefined) {
+      sound.play(`pick${Math.floor(Math.random() * 6) + 1}`);
       gameState.moveTo(nextTile);
       this.renderNextChunkIfNecessary(gameState);
     } else if (letter === "Backspace" && history.length > 0) {
+      sound.play(`return${Math.floor(Math.random() * 5) + 1}`);
       gameState.moveBack();
+    } else {
+      sound.play(`error${Math.floor(Math.random() * 4) + 1}`);
     }
   }
 
