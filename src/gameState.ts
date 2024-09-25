@@ -253,12 +253,27 @@ export class GameState {
 
     this.currentTile.exit();
     nextTile.visit();
+    this.updateHighlighting(this.currentTile, nextTile);
 
     this.currentTile = nextTile;
 
     this.checkIfPlayerIsDead();
 
     this.renderNextWordsIfNecessary();
+  }
+
+  private updateHighlighting(oldTile: PathTile, nextTile: PathTile) {
+    const oldNeighbors = this.getSurroundingTiles(oldTile);
+    for (const neighbor of oldNeighbors) {
+      neighbor.unhighlightForPress();
+    }
+    const neighbors = this.getSurroundingTiles(nextTile);
+    for (const neighbor of neighbors) {
+      if (neighbor === this.history[this.history.length - 1]) {
+        continue;
+      }
+      neighbor.highlightForPress();
+    }
   }
 
   moveBack() {
@@ -269,6 +284,7 @@ export class GameState {
 
     this.currentTile.back();
     lastTile.enter();
+    this.updateHighlighting(this.currentTile, lastTile);
 
     this.currentTile = lastTile;
 
