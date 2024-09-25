@@ -10,9 +10,8 @@ englishWords.forEach((word) => {
   if (!englishWordsMap.has(word.length)) {
     englishWordsMap.set(word.length, []);
   }
-  englishWordsMap.get(word.length)!.push(word);
+  englishWordsMap.get(word.length)!.push(word.toLowerCase());
 });
-const allWordLengths = Array.from(englishWordsMap.keys()).sort();
 
 export class GameState {
   game: Game;
@@ -43,8 +42,7 @@ export class GameState {
     for (const tile of this.tiles.values()) {
       tile.render();
     }
-    const surroundingTiles = this.getSurroundingTiles(this.currentTile);
-    this.renderNextWords(surroundingTiles);
+    this.renderNextWords(this.currentTile, null);
     this.currentTile.visit();
     setTimeout(() => {
       let lavaTile = new LavaTile(
@@ -168,10 +166,8 @@ export class GameState {
     }
 
     this.renderNextWords(
-      surroundingTiles.filter(
-        // only generate forward tiles not backwards (in the history)
-        (tile) => this.history[this.history.length - 1] !== tile,
-      ),
+      this.currentTile,
+      this.history[this.history.length - 1],
     );
   }
 
@@ -179,7 +175,7 @@ export class GameState {
     totalLength: number,
     blockedBeginnings: string[],
     blockedEndings: string[],
-  ): string {
+  ): string | undefined {
     if (englishWordsMap.has(totalLength)) {
       const possibleExactLengthWord = englishWordsMap
         .get(totalLength)!
@@ -196,43 +192,125 @@ export class GameState {
       }
     }
 
-    // todo
+    const possibleWordsByLengthForFirstWord = Array.from(
+      englishWordsMap.entries(),
+    )
+      .filter(([length]) => length < totalLength - 1)
+      .filter(([_, words]) =>
+        words.some((word) => !blockedBeginnings.includes(word.charAt(0))),
+      );
+
+    const possibleLengthsForFirstWord = possibleWordsByLengthForFirstWord.map(
+      ([length]) => length,
+    );
+
+    while (possibleLengthsForFirstWord.length > 0) {
+      const chosenWordLengthIndex = Math.floor(
+        this.randomWordGenerator() * possibleLengthsForFirstWord.length,
+      );
+      const [_, possibleWords] =
+        possibleWordsByLengthForFirstWord[chosenWordLengthIndex];
+
+      const chosenWordIndex = Math.floor(
+        this.randomWordGenerator() * possibleWords.length,
+      );
+      const chosenWord = possibleWords[chosenWordIndex];
+
+      const remainingWord = this.getRandomWordsOfTotalLengthWithConstraints(
+        totalLength - chosenWord.length - 1,
+        [],
+        blockedEndings,
+      );
+
+      if (remainingWord !== undefined) {
+        return chosenWord + " " + remainingWord;
+      }
+    }
+
+    return undefined;
   }
 
-  private renderNextWords(surroundingTiles: PathTile[]) {
-    const nextWordsBeginningLetters: string[] = [];
-    debugger;
+  generateRandomString(length: number) {
+    const charset = "abcdefghijklmnopqrstuvwxyz ";
+    let result = "";
 
-    for (const tile of surroundingTiles) {
+    for (let i = 0; i < length; i++) {
+      const index = Math.floor(this.randomWordGenerator() * charset.length);
+      result += charset[index];
+    }
+
+    return result;
+  }
+
+  private renderNextWords(
+    crossingTile: PathTile,
+    comingFromTile: PathTile | null,
+  ) {
+    const allSurroundingTiles = this.getSurroundingTiles(crossingTile);
+    const nextPossibleTilesToFollow = allSurroundingTiles
+      .filter((tile) => tile !== comingFromTile)
+      .filter((tile) => tile.letter === undefined);
+
+    let duplicateSortedOut = false;
+
+    for (const tile of nextPossibleTilesToFollow) {
       const tilesTillIncludingNextCrossing: PathTile[] = [];
-      debugger;
 
-      let lastTile: PathTile | null = null;
+      let previousTile = crossingTile;
       let currentTile: PathTile = tile;
+      let endsInDeadEnd = false;
+
       while (true) {
+        tilesTillIncludingNextCrossing.push(currentTile);
         const nextSurroundingTiles = this.getSurroundingTiles(
           currentTile,
-        ).filter((tile) => tile !== lastTile);
-        if (nextSurroundingTiles.length !== 1 && lastTile !== null) {
+        ).filter((tile) => tile !== previousTile);
+
+        if (nextSurroundingTiles.length !== 1 && previousTile !== null) {
+          if (nextSurroundingTiles.length === 0) {
+            endsInDeadEnd = true;
+          }
           break;
         }
-        tilesTillIncludingNextCrossing.push(currentTile);
-        lastTile = currentTile;
+
+        previousTile = currentTile;
         currentTile = nextSurroundingTiles[0];
       }
 
+      const lastTile =
+        tilesTillIncludingNextCrossing[
+          tilesTillIncludingNextCrossing.length - 1
+        ];
+      if (lastTile === crossingTile && !duplicateSortedOut) {
+        duplicateSortedOut = true;
+        continue;
+      }
+
       // get restrictions for beginning (current crossing) and ending letters (next crossing)
-      const chosenWord = this.getRandomWordsOfTotalLengthWithConstraints(
-        tilesTillIncludingNextCrossing.length - 1,
-        todo,
-        todo,
+      let chosenWord = this.getRandomWordsOfTotalLengthWithConstraints(
+        tilesTillIncludingNextCrossing.length - (endsInDeadEnd ? 0 : 1),
+        allSurroundingTiles
+          .map((tile) => tile.letter)
+          .filter((letter): letter is string => letter !== undefined),
+        this.getSurroundingTiles(
+          tilesTillIncludingNextCrossing[
+            tilesTillIncludingNextCrossing.length - 1
+          ],
+        )
+          .map((tile) => tile.letter)
+          .filter((letter): letter is string => letter !== undefined),
       );
 
-      nextWordsBeginningLetters.push(chosenWord.charAt(0));
+      if (chosenWord === undefined) {
+        chosenWord = this.generateRandomString(
+          tilesTillIncludingNextCrossing.length - 1,
+        );
+      }
+
+      chosenWord += " ";
 
       tilesTillIncludingNextCrossing.forEach((tile, index) => {
-        tile.letter = chosenWord.charAt(index);
-        tile.text!.text = chosenWord.charAt(index); // todo account for spaces
+        tile.setLetter(chosenWord.charAt(index));
       });
     }
   }

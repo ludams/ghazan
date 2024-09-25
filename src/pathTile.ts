@@ -6,7 +6,7 @@ export class PathTile {
   game: Game;
   x: number;
   y: number;
-  letter: string;
+  letter?: string;
   visitTimestamps: number[] = [];
   backTimestamps: number[] = [];
   graphics?: Graphics;
@@ -15,18 +15,28 @@ export class PathTile {
   addedListener = false;
   listener = this.updateColor.bind(this);
 
-  constructor(game: Game, x: number, y: number, letter: string) {
+  constructor(game: Game, x: number, y: number) {
     this.game = game;
     this.x = x;
     this.y = y;
-    this.letter = letter;
   }
 
   render() {
     const pixelSize = this.game.config.pixelSize;
     const obj = new Graphics({ x: this.x * pixelSize, y: this.y * pixelSize });
+
+    this.game.app.stage.addChild(obj);
+
+    this.graphics = obj;
+  }
+
+  setLetter(letter: string) {
+    const pixelSize = this.game.config.pixelSize;
+    if (this.letter !== undefined) {
+      return;
+    }
     const text = new Text({
-      text: this.letter === " " ? "␣" : this.letter,
+      text: letter === " " ? "␣" : letter,
       style: {
         fontFamily: "Jetbrainsmono Regular",
         fontSize: this.game.config.fontSize,
@@ -38,11 +48,9 @@ export class PathTile {
       text.y = -0.15 * pixelSize;
     }
 
-    obj.addChild(text);
-    this.game.app.stage.addChild(obj);
-
-    this.graphics = obj;
+    this.letter = letter;
     this.text = text;
+    this.graphics?.addChild(text);
   }
 
   visit() {

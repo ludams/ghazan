@@ -1,5 +1,5 @@
 import { Application } from "pixi.js";
-import seedrandom, { PRNG } from "seedrandom";
+import { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
 import { GameState } from "./gameState.ts";
 import { PathTile } from "./pathTile.ts";
@@ -21,16 +21,15 @@ export class Game {
     return letters[Math.floor(rng() * letters.length)];
   }
 
-  createPathTile(x: number, y: number, letter: string): PathTile {
-    return new PathTile(this, x, y, letter);
+  createPathTile(x: number, y: number): PathTile {
+    return new PathTile(this, x, y);
   }
 
   private generateMazeForIndex(index: number) {
-    const rng = seedrandom(this.config.baseSeed + "Letters:" + index);
     const newGridChunk = new GridChunk(index, this.config);
     newGridChunk.generateMaze();
     return newGridChunk.corridorMazePixels.map((pixel) =>
-      this.createPathTile(pixel.x + 1, pixel.y + 1, Game.randomLetter(rng)),
+      this.createPathTile(pixel.x + 1, pixel.y + 1),
     );
   }
 
