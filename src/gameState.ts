@@ -8,6 +8,7 @@ export class GameState {
   tileContainer: Container;
   private pathTiles: Map<string, PathTile>;
   lavaTiles: Map<string, LavaTile> = new Map();
+  lavaTilesSurroundedByLava: Set<number> = new Set();
   history: PathTile[] = [];
   startTile: PathTile;
   currentTile: PathTile;
@@ -89,29 +90,17 @@ export class GameState {
       }
 
       let lastLavaTime = Date.now();
-      let lavaDistanceWithBaseSpeed = Math.max(
+      let distanceWithLavaBaseSpeed = Math.max(
         this.game.config.maxGameTilePaddingLeft - 5,
         5,
       );
       this.game.app.ticker.add(() => {
         const now = Date.now();
         const timeDelta = now - lastLavaTime;
-        const playerX = this.currentTile.x;
-        const furthestLavaX = Math.max(
-          ...[...this.lavaTiles.values()]
-            .filter((tile) => tile.heat >= 1)
-            .map((tile) => tile.x),
-        );
-        const distanceToLava = playerX - furthestLavaX;
-        const bufferedDistance = Math.max(
-          distanceToLava - lavaDistanceWithBaseSpeed,
-          0,
-        );
-        const baseSpeed = Math.log(playerX) / Math.log(50) + 1;
-
-        const lavaSpeed = 1.1 ** bufferedDistance * baseSpeed;
-        const lavaMoveTime = 1500 / lavaSpeed;
+        const lavaSpeed = this.computeLavaSpeed(distanceWithLavaBaseSpeed);
+        const lavaMoveTime = 100 / lavaSpeed;
         if (timeDelta > lavaMoveTime) {
+          console.log(Math.round(lavaSpeed * 100) / 100, lavaMoveTime);
           lastLavaTime = now;
           this.spreadLava();
         }
@@ -120,6 +109,23 @@ export class GameState {
     this.game.app.ticker.add(() => {
       this.tryToCenterGame();
     });
+  }
+
+  private computeLavaSpeed(lavaDistanceWithBaseSpeed: number) {
+    const playerX = this.currentTile.x;
+    const furthestLavaX = Math.max(
+      ...[...this.lavaTiles.values()]
+        .filter((tile) => tile.heat >= 1)
+        .map((tile) => tile.x),
+    );
+    const distanceToLava = playerX - furthestLavaX;
+    const bufferedDistance = Math.max(
+      distanceToLava - lavaDistanceWithBaseSpeed,
+      0,
+    );
+    const baseSpeed = Math.log(playerX) / Math.log(50) + 1;
+
+    return 1.1 ** bufferedDistance * baseSpeed;
   }
 
   private tryToCenterGame() {
@@ -153,6 +159,13 @@ export class GameState {
       };
     });
     for (const lt of lavaTileObjects) {
+      if (
+        this.lavaTilesSurroundedByLava.has(
+          this.convertCoordinatesToNumber(lt.x, lt.y),
+        )
+      ) {
+        continue;
+      }
       this.spreadLavaToSurroundingTiles(lt);
     }
   }
@@ -174,11 +187,12 @@ export class GameState {
         y < this.game.config.chunkCellsPerGrid * 2
       );
     });
+    let allNeighborsAreLava = true;
     for (let { x, y } of neighbours) {
       let tile = this.lavaTiles.get(`${x},${y}`);
       if (tile === undefined) {
-        let newTile = new LavaTile(this.game, x, y);
-        this.addLavaTile(newTile);
+        tile = new LavaTile(this.game, x, y);
+        this.addLavaTile(tile);
       } else {
         const isNeighborPath = this.pathTiles.has(`${x},${y}`);
 
@@ -199,6 +213,14 @@ export class GameState {
           tile.increaseHeat(heatDelta);
         }
       }
+      if (tile.heat < 1) {
+        allNeighborsAreLava = false;
+      }
+    }
+    if (allNeighborsAreLava && lavaTile.heat >= 1) {
+      this.lavaTilesSurroundedByLava.add(
+        this.convertCoordinatesToNumber(lavaTile.x, lavaTile.y),
+      );
     }
   }
 
@@ -235,8 +257,8 @@ export class GameState {
   getSurroundingTiles(tile: PathTile): PathTile[] {
     const { x, y } = tile;
     return [
-      this.getPathTile(x, y - 1),
       this.getPathTile(x + 1, y),
+      this.getPathTile(x, y - 1),
       this.getPathTile(x, y + 1),
       this.getPathTile(x - 1, y),
     ].filter((tile) => tile !== undefined) as PathTile[];
@@ -258,5 +280,9 @@ export class GameState {
       this.tileContainer.addChild(tile.graphics);
       tile.render();
     }
+  }
+
+  convertCoordinatesToNumber(x: number, y: number) {
+    return x * (this.game.config.chunkCellsPerGrid * 2 + 1) + y;
   }
 }

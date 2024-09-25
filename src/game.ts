@@ -5,7 +5,7 @@ import { GameState } from "./gameState.ts";
 import { GridChunk } from "./maze-generation.ts";
 import { PathTile } from "./pathTile.ts";
 
-const letters = "abcdefghijklmnopqrstuvwxyz ";
+const letters = "a";
 
 export class Game {
   app: Application;

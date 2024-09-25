@@ -8,6 +8,7 @@ export class LavaTile {
   y: number;
   heat: number = 0;
   graphics: Graphics;
+  listener: (() => void) | null = null;
 
   constructor(game: Game, x: number, y: number) {
     this.game = game;
@@ -22,7 +23,7 @@ export class LavaTile {
   increaseHeat(heatDelta: number) {
     const previousHeat = this.heat;
     this.heat = Math.min(1, this.heat + heatDelta);
-    if (this.heat >= 0.5 && previousHeat < 1) {
+    if (this.heat >= 1 && previousHeat < 1 && !this.isTileOutsideOfView()) {
       this.render();
     }
   }
@@ -35,7 +36,12 @@ export class LavaTile {
     const b = Math.random() * 0.1 + 1.0;
     const now = Date.now();
 
-    this.game.app.ticker.add(() => {
+    let listener = () => {
+      if (this.isTileOutsideOfView()) {
+        this.game.app.ticker.remove(listener);
+        this.listener = null;
+        return;
+      }
       const timeSinceLava = Date.now() - now;
       const timeBase = 0.9998;
       let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
@@ -59,7 +65,19 @@ export class LavaTile {
             h: hue,
           }),
         );
-    });
+    };
+    this.game.app.ticker.add(listener);
+    this.listener = listener;
+  }
+
+  private isTileOutsideOfView() {
+    const playerX = this.game.gameState?.currentTile.x;
+    if (playerX === undefined) {
+      return false;
+    }
+    const tileX = this.x;
+    const maxPadding = this.game.config.maxGameTilePaddingLeft;
+    return tileX < playerX - maxPadding - 15;
   }
 
   private getAnimatedValue(

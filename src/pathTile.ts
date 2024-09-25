@@ -104,6 +104,10 @@ export class PathTile {
   }
 
   private updateColor() {
+    if (this.isTileOutsideOfView()) {
+      this.removeListener();
+      return;
+    }
     let text = this.text;
     if (text === undefined) {
       return;
@@ -155,6 +159,16 @@ export class PathTile {
       timeSinceLastVisit,
       3000,
     );
+  }
+
+  private isTileOutsideOfView() {
+    const playerX = this.game.gameState?.currentTile.x;
+    if (playerX === undefined) {
+      return false;
+    }
+    const tileX = this.x;
+    const maxPadding = this.game.config.maxGameTilePaddingLeft;
+    return tileX < playerX - maxPadding - 15;
   }
 
   private getColorForSnake(timeSinceLastVisit: number) {

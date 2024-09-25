@@ -9,8 +9,8 @@ export const config: Config = {
   fontSize: 20,
   baseSeed: "1337b",
 
-  minGameTilePaddingLeft: 10,
-  maxGameTilePaddingLeft: 15,
+  minGameTilePaddingLeft: 15,
+  maxGameTilePaddingLeft: 20,
   springForce: 0.01,
   lavaStartOffset: 7,
 
