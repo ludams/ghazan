@@ -7,7 +7,7 @@ export const config: Config = {
   wallColor: 0x000000,
   pixelSize: 25,
   fontSize: 20,
-  baseSeed: "1337",
+  baseSeed: "1337b",
 
   minGameTilePaddingLeft: 10,
   maxGameTilePaddingLeft: 15,

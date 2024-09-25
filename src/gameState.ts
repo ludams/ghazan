@@ -88,7 +88,34 @@ export class GameState {
         this.addLavaTile(new LavaTile(this.game, x + 1, y));
       }
 
-      setInterval(() => this.spreadLava(), 1000);
+      let lastLavaTime = Date.now();
+      let lavaDistanceWithBaseSpeed = Math.max(
+        this.game.config.maxGameTilePaddingLeft - 5,
+        5,
+      );
+      this.game.app.ticker.add(() => {
+        const now = Date.now();
+        const timeDelta = now - lastLavaTime;
+        const playerX = this.currentTile.x;
+        const furthestLavaX = Math.max(
+          ...[...this.lavaTiles.values()]
+            .filter((tile) => tile.heat >= 1)
+            .map((tile) => tile.x),
+        );
+        const distanceToLava = playerX - furthestLavaX;
+        const bufferedDistance = Math.max(
+          distanceToLava - lavaDistanceWithBaseSpeed,
+          0,
+        );
+        const baseSpeed = Math.log(playerX) / Math.log(50) + 1;
+
+        const lavaSpeed = 1.1 ** bufferedDistance * baseSpeed;
+        const lavaMoveTime = 1500 / lavaSpeed;
+        if (timeDelta > lavaMoveTime) {
+          lastLavaTime = now;
+          this.spreadLava();
+        }
+      });
     }, 0);
     this.game.app.ticker.add(() => {
       this.tryToCenterGame();
