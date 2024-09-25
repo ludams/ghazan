@@ -46,15 +46,24 @@ export class Game {
       const random = Math.random();
       if (random < 0.5) {
         currentSong = "musicLoop1";
-        sound.play("musicLoop1", { complete: playRandomMusic, volume: 0.5 });
+        sound.play("musicLoop1", {
+          complete: playRandomMusic,
+          volume: 0.5,
+          end: 17,
+        });
       } else {
         currentSong = "musicLoop2";
-        sound.play("musicLoop2", { complete: playRandomMusic, volume: 0.5 });
+        sound.play("musicLoop2", {
+          complete: playRandomMusic,
+          volume: 0.5,
+          end: 17,
+        });
       }
     };
 
     sound.play("musicIntro", {
       volume: 0.5,
+      end: 17,
       complete: () => {
         playRandomMusic();
       },

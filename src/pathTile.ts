@@ -24,6 +24,7 @@ export class PathTile {
     this.graphics = new Graphics({
       x: this.x * this.game.config.pixelSize,
       y: this.y * this.game.config.pixelSize,
+      zIndex: -1,
     });
   }
 
