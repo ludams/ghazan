@@ -1,47 +1,117 @@
+import { Container } from "pixi.js";
 import { Game } from "./game.ts";
 import { LavaTile } from "./lavaTile.ts";
 import { PathTile } from "./pathTile.ts";
 
 export class GameState {
   game: Game;
-  tiles: Map<string, PathTile>;
+  tileContainer: Container;
+  private pathTiles: Map<string, PathTile>;
+  lavaTiles: Map<string, LavaTile> = new Map();
   history: PathTile[] = [];
   startTile: PathTile;
   currentTile: PathTile;
-  liquidLavaTiles: { x: number; y: number }[] = [];
-  lavaTiles: Map<string, LavaTile> = new Map();
   renderedChunksCount: number;
 
   constructor(
     game: Game,
-    tiles: Map<string, PathTile>,
+    pathTiles: Map<string, PathTile>,
     startTile: PathTile,
     renderedChunksCount: number,
   ) {
     this.game = game;
-    this.tiles = tiles;
+    this.tileContainer = new Container({
+      x: game.config.minGameTilePaddingLeft * game.config.pixelSize,
+    });
+    this.pathTiles = pathTiles;
+    pathTiles.forEach((tile) => this.tileContainer.addChild(tile.graphics));
+    const startPathTiles = [];
+    for (let x = -game.config.minGameTilePaddingLeft; x < startTile.x; x++) {
+      const tile = this.game.createPathTile(x, startTile.y, "");
+      tile.visitTimestamps.push(Date.now());
+      tile.backTimestamps.push(Date.now());
+      startPathTiles.push(tile);
+    }
+
+    const circleCenterX = -this.game.config.minGameTilePaddingLeft;
+    const circleCenterY = this.game.config.chunkCellsPerGrid - 1;
+    const circleRadius =
+      this.game.config.minGameTilePaddingLeft -
+      this.game.config.lavaStartOffset;
+
+    for (let x = -this.game.config.minGameTilePaddingLeft; x < 0; x++) {
+      for (let y = 0; y < this.game.config.chunkCellsPerGrid * 2; y++) {
+        if (
+          Math.pow(x - circleCenterX, 2) + Math.pow(y - circleCenterY, 2) <=
+          Math.pow(circleRadius, 2)
+        ) {
+          const tile = this.game.createPathTile(x, y, "");
+          tile.visitTimestamps.push(Date.now());
+          tile.backTimestamps.push(Date.now());
+          startPathTiles.push(tile);
+        }
+      }
+    }
+    this.addPathTiles(startPathTiles);
     this.startTile = startTile;
     this.currentTile = startTile;
     this.renderedChunksCount = renderedChunksCount;
   }
 
   start() {
-    for (const tile of this.tiles.values()) {
+    for (const tile of this.pathTiles.values()) {
       tile.render();
     }
     this.currentTile.visit();
+    this.game.app.stage.addChild(this.tileContainer);
     setTimeout(() => {
-      let lavaTile = new LavaTile(
-        this.game,
-        this.startTile.x,
-        this.startTile.y,
-      );
-      lavaTile.increaseHeat(1);
-      this.lavaTiles.set(`${lavaTile.x},${lavaTile.y}`, lavaTile);
-      this.liquidLavaTiles.push({ x: lavaTile.x, y: lavaTile.y });
+      let initialLavaFields = [];
+      const circleCenterX = -this.game.config.minGameTilePaddingLeft;
+      const circleCenterY = this.game.config.chunkCellsPerGrid - 1;
+      const circleRadius =
+        this.game.config.minGameTilePaddingLeft -
+        this.game.config.lavaStartOffset;
+      const x = -this.game.config.minGameTilePaddingLeft;
+      for (let y = 0; y < this.game.config.chunkCellsPerGrid * 2; y++) {
+        if (
+          Math.pow(x - circleCenterX, 2) + Math.pow(y - circleCenterY, 2) <=
+          Math.pow(circleRadius, 2)
+        ) {
+          initialLavaFields.push([x, y]);
+        }
+      }
+
+      for (let [x, y] of initialLavaFields) {
+        let lavaTile = new LavaTile(this.game, x, y);
+        lavaTile.increaseHeat(1);
+        this.addLavaTile(lavaTile);
+        this.addLavaTile(new LavaTile(this.game, x + 1, y));
+      }
 
       setInterval(() => this.spreadLava(), 1000);
-    }, 5000);
+    }, 0);
+    this.game.app.ticker.add(() => {
+      this.tryToCenterGame();
+    });
+  }
+
+  private tryToCenterGame() {
+    const playerPixelX = this.currentTile.x * this.game.config.pixelSize;
+    const borderPadding = playerPixelX + this.tileContainer.position.x;
+    const minPaddingPx =
+      this.game.config.minGameTilePaddingLeft * this.game.config.pixelSize;
+    const maxPaddingPx =
+      this.game.config.maxGameTilePaddingLeft * this.game.config.pixelSize;
+    let diff = 0;
+    if (borderPadding < minPaddingPx) {
+      diff = minPaddingPx - borderPadding;
+    } else if (borderPadding > maxPaddingPx) {
+      diff = maxPaddingPx - borderPadding;
+    }
+
+    const spring = 0.01;
+    this.tileContainer.position.x =
+      this.tileContainer.position.x + diff * spring;
   }
 
   private spreadLava() {
@@ -71,14 +141,19 @@ export class GameState {
       { x: lavaTile.x, y: lavaTile.y + 1 },
       { x: lavaTile.x - 1, y: lavaTile.y },
     ].filter(({ x, y }) => {
-      return x > 0 && y > 0 && y < this.game.config.chunkCellsPerGrid * 2;
+      return (
+        x >= -this.game.config.minGameTilePaddingLeft &&
+        y > 0 &&
+        y < this.game.config.chunkCellsPerGrid * 2
+      );
     });
     for (let { x, y } of neighbours) {
       let tile = this.lavaTiles.get(`${x},${y}`);
       if (tile === undefined) {
-        this.lavaTiles.set(`${x},${y}`, new LavaTile(this.game, x, y));
+        let newTile = new LavaTile(this.game, x, y);
+        this.addLavaTile(newTile);
       } else {
-        const isNeighborPath = this.tiles.has(`${x},${y}`);
+        const isNeighborPath = this.pathTiles.has(`${x},${y}`);
 
         if (lavaTile.heat >= 1) {
           let heatDelta: number;
@@ -110,6 +185,9 @@ export class GameState {
   }
 
   moveBack() {
+    if (this.history.length === 0) {
+      return;
+    }
     const lastTile = this.history.pop() as PathTile;
 
     this.currentTile.back();
@@ -119,7 +197,12 @@ export class GameState {
   }
 
   getPathTile(x: number, y: number): PathTile | undefined {
-    return this.tiles.get(`${x},${y}`);
+    return this.pathTiles.get(`${x},${y}`);
+  }
+
+  addLavaTile(tile: LavaTile) {
+    this.lavaTiles.set(`${tile.x},${tile.y}`, tile);
+    this.tileContainer.addChild(tile.graphics);
   }
 
   getSurroundingTiles(tile: PathTile): PathTile[] {
@@ -140,5 +223,13 @@ export class GameState {
         (this.history.length === 0 ||
           tile !== this.history[this.history.length - 1]),
     );
+  }
+
+  addPathTiles(tiles: PathTile[]) {
+    for (const tile of tiles) {
+      this.pathTiles.set(`${tile.x},${tile.y}`, tile);
+      this.tileContainer.addChild(tile.graphics);
+      tile.render();
+    }
   }
 }

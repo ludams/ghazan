@@ -8,6 +8,11 @@ export type Config = {
   pixelSize: number;
   fontSize: number;
 
+  minGameTilePaddingLeft: number;
+  maxGameTilePaddingLeft: number;
+  springForce: number;
+  lavaStartOffset: number;
+
   chunkCellsPerGrid: number;
   deadEndWallBreakRatio: number;
   chunkConnectingWallBreakRatio: number;

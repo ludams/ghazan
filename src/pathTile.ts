@@ -1,5 +1,5 @@
 import { formatHex } from "culori";
-import { Graphics, Text, Ticker } from "pixi.js";
+import { Graphics, Text } from "pixi.js";
 import { Game } from "./game.ts";
 
 export class PathTile {
@@ -9,7 +9,7 @@ export class PathTile {
   letter: string;
   visitTimestamps: number[] = [];
   backTimestamps: number[] = [];
-  graphics?: Graphics;
+  graphics: Graphics;
   text?: Text;
   isCurrentPlayerTile = false;
   addedListener = false;
@@ -20,11 +20,14 @@ export class PathTile {
     this.x = x;
     this.y = y;
     this.letter = letter;
+    this.graphics = new Graphics({
+      x: this.x * this.game.config.pixelSize,
+      y: this.y * this.game.config.pixelSize,
+    });
   }
 
   render() {
     const pixelSize = this.game.config.pixelSize;
-    const obj = new Graphics({ x: this.x * pixelSize, y: this.y * pixelSize });
     const text = new Text({
       text: this.letter === " " ? "␣" : this.letter,
       style: {
@@ -38,10 +41,11 @@ export class PathTile {
       text.y = -0.15 * pixelSize;
     }
 
-    obj.addChild(text);
-    this.game.app.stage.addChild(obj);
+    this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0x444444);
 
-    this.graphics = obj;
+    this.graphics.addChild(text);
+    this.updateColor();
+
     this.text = text;
   }
 
@@ -67,13 +71,22 @@ export class PathTile {
     }
   }
 
-  private getAnimatedValue(
+  private getAnimatedValueWithMiddle(
     startValue: number,
+    middleValue: number,
     endValue: number,
-    timeBase: number,
     time: number,
+    middleTime: number,
   ) {
-    return endValue - (endValue - startValue) * timeBase ** time;
+    const k = (1 / middleTime) * 20;
+
+    const logisticPart1 =
+      startValue - (startValue - middleValue) / (1 + Math.exp(-k * time + 2));
+
+    const logisticPart2 =
+      (endValue - middleValue) / (1 + Math.exp(-k * (time - middleTime)));
+
+    return logisticPart1 + logisticPart2;
   }
 
   private registerListener() {
@@ -90,53 +103,74 @@ export class PathTile {
     }
   }
 
-  private updateColor(_: Ticker) {
-    let obj = this.graphics;
+  private updateColor() {
     let text = this.text;
-    if (obj === undefined || text === undefined) {
+    if (text === undefined) {
       return;
     }
     const now = Date.now();
     const lastVisitTimestamp =
       this.visitTimestamps[this.visitTimestamps.length - 1];
     const timeSinceLastVisit = now - lastVisitTimestamp;
-    this.updateForTimestamp(obj, text, timeSinceLastVisit);
+    this.updateForTimestamp(text, timeSinceLastVisit);
   }
 
-  private updateForTimestamp(
-    obj: Graphics,
-    text: Text,
-    timeSinceLastVisit: number,
-  ) {
+  private updateForTimestamp(text: Text, timeSinceLastVisit: number) {
     const pixelSize = this.game.config.pixelSize;
     const isVisited = this.visitTimestamps.length > 0;
     const isDeleted =
       this.visitTimestamps.length > 0 &&
       this.visitTimestamps.length === this.backTimestamps.length;
     if (!isVisited) {
-      obj.clear();
+      this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0xff3333);
       text.style.fill = 0xffffff;
     } else {
+      let backgroundColor: number | string;
+      let textAlpha: number;
+      if (isDeleted) {
+        backgroundColor = 0xffffff;
+        textAlpha = 1;
+      } else {
+        backgroundColor = this.getColorForSnake(timeSinceLastVisit);
+        textAlpha = this.getTextAlphaForSnake(timeSinceLastVisit);
+      }
+
       text.style.fill = 0x000000;
-      const backgroundColor = isDeleted
-        ? 0xffffff
-        : this.getColorForSnake(timeSinceLastVisit);
-      obj.clear().rect(0, 0, pixelSize, pixelSize).fill(backgroundColor);
+      text.alpha = textAlpha;
+      this.graphics
+        .clear()
+        .rect(0, 0, pixelSize, pixelSize)
+        .fill(backgroundColor);
     }
   }
 
+  private getTextAlphaForSnake(timeSinceLastVisit: number) {
+    if (this.isCurrentPlayerTile) {
+      return 0.9;
+    }
+    return this.getAnimatedValueWithMiddle(
+      0.9,
+      0.8,
+      0.3,
+      timeSinceLastVisit,
+      3000,
+    );
+  }
+
   private getColorForSnake(timeSinceLastVisit: number) {
-    const chroma = this.getAnimatedValue(
+    const chroma = this.getAnimatedValueWithMiddle(
       0.25,
       this.isCurrentPlayerTile ? 0.2 : 0.15,
-      0.999,
+      this.isCurrentPlayerTile ? 0.2 : 0.1,
       timeSinceLastVisit,
+      3000,
     );
-    const lightness = this.getAnimatedValue(
+    const lightness = this.getAnimatedValueWithMiddle(
       0.85,
       this.isCurrentPlayerTile ? 0.85 : 0.7,
-      0.999,
+      this.isCurrentPlayerTile ? 0.8 : 0.925,
       timeSinceLastVisit,
+      3000,
     );
 
     return formatHex({

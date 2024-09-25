@@ -2,8 +2,8 @@ import { Application } from "pixi.js";
 import seedrandom, { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
 import { GameState } from "./gameState.ts";
-import { PathTile } from "./pathTile.ts";
 import { GridChunk } from "./maze-generation.ts";
+import { PathTile } from "./pathTile.ts";
 
 const letters = "abcdefghijklmnopqrstuvwxyz ";
 
@@ -34,13 +34,6 @@ export class Game {
     );
   }
 
-  private addTilesToMap(
-    tilesMap: Map<string, PathTile>,
-    tilesToAdd: PathTile[],
-  ) {
-    tilesToAdd.forEach((tile) => tilesMap.set(`${tile.x},${tile.y}`, tile));
-  }
-
   start(x: number, y: number) {
     this.resetGameState(x, y);
 
@@ -68,12 +61,12 @@ export class Game {
   }
 
   private createInitialTilesMap(initialChunkCount: number) {
-    const tilesByChunkIndex = Array(initialChunkCount)
-      .fill(0)
-      .map((_, index) => this.generateMazeForIndex(index));
-    const tiles = new Map();
-    this.addTilesToMap(tiles, tilesByChunkIndex.flat());
-    return tiles;
+    return new Map<string, PathTile>(
+      Array(initialChunkCount)
+        .fill(0)
+        .flatMap((_, index) => this.generateMazeForIndex(index))
+        .map((tile) => [`${tile.x},${tile.y}`, tile]),
+    );
   }
 
   handleInput(letter: string) {
@@ -105,7 +98,7 @@ export class Game {
     const newTilesToRender = this.generateMazeForIndex(
       gameState.renderedChunksCount,
     );
-    this.addTilesToMap(gameState.tiles, newTilesToRender);
+    gameState.addPathTiles(newTilesToRender);
     gameState.renderedChunksCount++;
     newTilesToRender.forEach((tile) => tile.render());
   }
