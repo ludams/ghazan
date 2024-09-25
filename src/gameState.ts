@@ -1,6 +1,18 @@
 import { Game } from "./game.ts";
 import { LavaTile } from "./lavaTile.ts";
 import { PathTile } from "./pathTile.ts";
+import { words } from "./languages/english_1k.json";
+import seedrandom from "seedrandom";
+
+const englishWords: string[] = words;
+const englishWordsMap: Map<number, string[]> = new Map();
+englishWords.forEach((word) => {
+  if (!englishWordsMap.has(word.length)) {
+    englishWordsMap.set(word.length, []);
+  }
+  englishWordsMap.get(word.length)!.push(word);
+});
+const allWordLengths = Array.from(englishWordsMap.keys()).sort();
 
 export class GameState {
   game: Game;
@@ -11,6 +23,7 @@ export class GameState {
   liquidLavaTiles: { x: number; y: number }[] = [];
   lavaTiles: Map<string, LavaTile> = new Map();
   renderedChunksCount: number;
+  randomWordGenerator: () => number;
 
   constructor(
     game: Game,
@@ -23,12 +36,15 @@ export class GameState {
     this.startTile = startTile;
     this.currentTile = startTile;
     this.renderedChunksCount = renderedChunksCount;
+    this.randomWordGenerator = seedrandom(game.config.baseSeed + "Words");
   }
 
   start() {
     for (const tile of this.tiles.values()) {
       tile.render();
     }
+    const surroundingTiles = this.getSurroundingTiles(this.currentTile);
+    this.renderNextWords(surroundingTiles);
     this.currentTile.visit();
     setTimeout(() => {
       let lavaTile = new LavaTile(
@@ -107,6 +123,7 @@ export class GameState {
     nextTile.visit();
 
     this.currentTile = nextTile;
+    this.renderNextWordsIfNecessary();
   }
 
   moveBack() {
@@ -140,5 +157,83 @@ export class GameState {
         (this.history.length === 0 ||
           tile !== this.history[this.history.length - 1]),
     );
+  }
+
+  private renderNextWordsIfNecessary() {
+    const surroundingTiles = this.getSurroundingTiles(this.currentTile);
+
+    // only one direction "I'm in a corridor, have one option, so I'm not at a crossing" so the algorithm must already have generated a letter for the next tile
+    if (surroundingTiles.length <= 2) {
+      return;
+    }
+
+    this.renderNextWords(
+      surroundingTiles.filter(
+        // only generate forward tiles not backwards (in the history)
+        (tile) => this.history[this.history.length - 1] !== tile,
+      ),
+    );
+  }
+
+  private getRandomWordsOfTotalLengthWithConstraints(
+    totalLength: number,
+    blockedBeginnings: string[],
+    blockedEndings: string[],
+  ): string {
+    if (englishWordsMap.has(totalLength)) {
+      const possibleExactLengthWord = englishWordsMap
+        .get(totalLength)!
+        .filter(
+          (word) =>
+            !blockedBeginnings.includes(word.charAt(0)) &&
+            !blockedEndings.includes(word.charAt(word.length - 1)),
+        );
+      if (possibleExactLengthWord.length > 0) {
+        const chosenWordIndex = Math.floor(
+          this.randomWordGenerator() * possibleExactLengthWord.length,
+        );
+        return possibleExactLengthWord[chosenWordIndex];
+      }
+    }
+
+    // todo
+  }
+
+  private renderNextWords(surroundingTiles: PathTile[]) {
+    const nextWordsBeginningLetters: string[] = [];
+    debugger;
+
+    for (const tile of surroundingTiles) {
+      const tilesTillIncludingNextCrossing: PathTile[] = [];
+      debugger;
+
+      let lastTile: PathTile | null = null;
+      let currentTile: PathTile = tile;
+      while (true) {
+        const nextSurroundingTiles = this.getSurroundingTiles(
+          currentTile,
+        ).filter((tile) => tile !== lastTile);
+        if (nextSurroundingTiles.length !== 1 && lastTile !== null) {
+          break;
+        }
+        tilesTillIncludingNextCrossing.push(currentTile);
+        lastTile = currentTile;
+        currentTile = nextSurroundingTiles[0];
+      }
+
+      // get restrictions for beginning (current crossing) and ending letters (next crossing)
+      const chosenWord = this.getRandomWordsOfTotalLengthWithConstraints(
+        tilesTillIncludingNextCrossing.length - 1,
+        todo,
+        todo,
+      );
+
+      nextWordsBeginningLetters.push(chosenWord.charAt(0));
+
+      tilesTillIncludingNextCrossing.forEach((tile, index) => {
+        tile.letter = chosenWord.charAt(index);
+        tile.text!.text = chosenWord.charAt(index); // todo account for spaces
+      });
+    }
   }
 }
