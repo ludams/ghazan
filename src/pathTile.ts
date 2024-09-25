@@ -27,8 +27,8 @@ export class PathTile {
 
   render() {
     const pixelSize = this.game.config.pixelSize;
-      this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0x444444);
-      this.updateColor();
+    this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0x444444);
+    this.updateColor();
   }
 
   setLetter(letter: string) {
@@ -113,26 +113,24 @@ export class PathTile {
       this.removeListener();
       return;
     }
-    let text = this.text;
-    if (text === undefined) {
-      return;
-    }
     const now = Date.now();
     const lastVisitTimestamp =
       this.visitTimestamps[this.visitTimestamps.length - 1];
     const timeSinceLastVisit = now - lastVisitTimestamp;
-    this.updateForTimestamp(text, timeSinceLastVisit);
+    this.updateForTimestamp(timeSinceLastVisit);
   }
 
-  private updateForTimestamp(text: Text, timeSinceLastVisit: number) {
+  private updateForTimestamp(timeSinceLastVisit: number) {
     const pixelSize = this.game.config.pixelSize;
     const isVisited = this.visitTimestamps.length > 0;
     const isDeleted =
       this.visitTimestamps.length > 0 &&
       this.visitTimestamps.length === this.backTimestamps.length;
     if (!isVisited) {
-      this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0xff3333);
-      text.style.fill = 0xffffff;
+      this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0x444444);
+      if (this.text) {
+        this.text.style.fill = 0xffffff;
+      }
     } else {
       let backgroundColor: number | string;
       let textAlpha: number;
@@ -144,8 +142,10 @@ export class PathTile {
         textAlpha = this.getTextAlphaForSnake(timeSinceLastVisit);
       }
 
-      text.style.fill = 0x000000;
-      text.alpha = textAlpha;
+      if (this.text) {
+        this.text.style.fill = 0x000000;
+        this.text.alpha = textAlpha;
+      }
       this.graphics
         .clear()
         .rect(0, 0, pixelSize, pixelSize)
