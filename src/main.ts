@@ -56,7 +56,7 @@ function startApp() {
   sound.add("death", "sounds/death.mp3");
 
   sound.add("musicIntro", "sounds/the_maze_intro.wav");
-  sound.add("musicLoop1", "sounds/the_maze_loop.wav");
+  sound.add("musicLoop1", "sounds/the_maze_loop_1.wav");
   sound.add("musicLoop2", "sounds/the_maze_loop_2.wav");
 
   // Developer tools integration

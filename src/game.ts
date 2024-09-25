@@ -61,7 +61,7 @@ export class Game {
     });
 
     gameState.onPlayerDeath((score) => {
-      gameState.destroy();
+      gameState!.destroy();
       sound.stop(currentSong);
       sound.play("death");
       this.displayGameOver(score);
