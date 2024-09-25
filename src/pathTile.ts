@@ -12,8 +12,11 @@ export class PathTile {
   graphics: Graphics;
   text?: Text;
   isCurrentPlayerTile = false;
+  isHighlighted: boolean = false;
   addedListener = false;
   listener = this.updateColor.bind(this);
+
+  unvisitedColor = 0x444444;
 
   constructor(game: Game, x: number, y: number, letter: string) {
     this.game = game;
@@ -41,7 +44,10 @@ export class PathTile {
       text.y = -0.15 * pixelSize;
     }
 
-    this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0x444444);
+    this.graphics
+      .clear()
+      .rect(0, 0, pixelSize, pixelSize)
+      .fill(this.unvisitedColor);
 
     this.graphics.addChild(text);
     this.updateColor();
@@ -103,6 +109,16 @@ export class PathTile {
     }
   }
 
+  highlightForPress() {
+    this.isHighlighted = true;
+    this.updateColor();
+  }
+
+  unhighlightForPress() {
+    this.isHighlighted = false;
+    this.updateColor();
+  }
+
   private updateColor() {
     if (this.isTileOutsideOfView()) {
       this.removeListener();
@@ -126,7 +142,10 @@ export class PathTile {
       this.visitTimestamps.length > 0 &&
       this.visitTimestamps.length === this.backTimestamps.length;
     if (!isVisited) {
-      this.graphics.clear().rect(0, 0, pixelSize, pixelSize).fill(0xff3333);
+      this.graphics
+        .clear()
+        .rect(0, 0, pixelSize, pixelSize)
+        .fill(this.unvisitedColor);
       text.style.fill = 0xffffff;
     } else {
       let backgroundColor: number | string;

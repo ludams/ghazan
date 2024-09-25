@@ -67,13 +67,12 @@ export class LavaTile {
         Math.cos((b * timeSinceLava) / 1000) *
         0.1;
 
-    let color = formatHex({
+    return formatHex({
       mode: "oklch",
       l: lightness,
       c: chroma,
       h: hue,
     });
-    return color;
   }
 
   private removeListener() {
