@@ -150,11 +150,11 @@ export class PathTile {
 
   private getTextAlphaForSnake(timeSinceLastVisit: number) {
     if (this.isCurrentPlayerTile) {
-      return 0.9;
+      return 0.5;
     }
     return this.getAnimatedValueWithMiddle(
-      0.9,
-      0.8,
+      0.5,
+      0.4,
       0.3,
       timeSinceLastVisit,
       3000,

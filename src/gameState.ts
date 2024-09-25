@@ -17,7 +17,7 @@ export class GameState {
   moveLavaListener: (() => void) | null = null;
   centerGameListener: (() => void) | null = null;
 
-  playerDeathListener: (() => void) | null = null;
+  playerDeathListener: ((score: number) => void) | null = null;
 
   constructor(
     game: Game,
@@ -300,7 +300,7 @@ export class GameState {
     return x * (this.game.config.chunkCellsPerGrid * 2 + 1) + y;
   }
 
-  onPlayerDeath(listener: () => void) {
+  onPlayerDeath(listener: (score: number) => void) {
     this.playerDeathListener = listener;
   }
 
@@ -311,7 +311,7 @@ export class GameState {
       console.log("You died!");
       this.removeListeners();
       if (this.playerDeathListener !== null) {
-        this.playerDeathListener();
+        this.playerDeathListener(x);
       }
     }
   }
