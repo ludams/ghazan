@@ -87,6 +87,53 @@ export class GridChunk {
     }
   }
 
+  public generateMaze() {
+    this.buildCorridorsWithRandomizedDfs();
+    this.openUpWallTowardsNextChunk();
+  }
+
+  private buildCorridorsWithRandomizedDfs() {
+    let initialCell = this.grid[0][0];
+    initialCell.visit();
+
+    let lfsNeighborsToVisitStack = [initialCell];
+    let lastCell: GridCell | undefined = undefined;
+
+    while (lfsNeighborsToVisitStack.length > 0) {
+      const currentCell = lfsNeighborsToVisitStack.pop()!;
+
+      const neighbors = this.getUnvisitedNeighbors(currentCell);
+      if (neighbors.length === 0) {
+        if (
+          lastCell === currentCell &&
+          this.rng() < this.config.deadEndWallBreakRatio
+        ) {
+          this.connectToRandomVisitedNeighborCell(currentCell);
+        }
+        continue;
+      }
+
+      if (neighbors.length > 1) {
+        lfsNeighborsToVisitStack.push(currentCell);
+      }
+
+      const nextCell = neighbors[Math.floor(this.rng() * neighbors.length)];
+      lastCell = nextCell;
+      this.connectTwoCells(currentCell, nextCell);
+      nextCell.visit();
+      lfsNeighborsToVisitStack.push(nextCell);
+    }
+  }
+
+  private connectToRandomVisitedNeighborCell(currentCell: GridCell) {
+    const visitedNeighbors = this.getDisconnectedVisitedNeighbors(currentCell);
+    const neighborToConnect =
+      visitedNeighbors[
+        Math.floor(this.rngWallBreak() * visitedNeighbors.length)
+      ];
+    this.connectTwoCells(currentCell, neighborToConnect);
+  }
+
   private getNeighbors(cell: GridCell): GridCell[] {
     let top =
       cell.gridY !== 0 ? this.grid[cell.gridX][cell.gridY - 1] : undefined;
@@ -148,47 +195,6 @@ export class GridChunk {
     const mazePixelX = 2 * cellA.gridX + cellB.gridX - cellA.gridX;
     const mazePixelY = 2 * cellA.gridY + cellB.gridY - cellA.gridY;
     this.mazePixels[mazePixelX][mazePixelY].type = "corridor";
-  }
-
-  public generateMaze() {
-    let initialCell = this.grid[0][0];
-    initialCell.visit();
-
-    let lfsNeighborsToVisitStack = [initialCell];
-    let lastCell: GridCell | undefined = undefined;
-
-    while (lfsNeighborsToVisitStack.length > 0) {
-      const currentCell = lfsNeighborsToVisitStack.pop()!;
-
-      const neighbors = this.getUnvisitedNeighbors(currentCell);
-      if (neighbors.length === 0) {
-        if (
-          lastCell === currentCell &&
-          this.rng() < this.config.deadEndWallBreakRatio
-        ) {
-          const visitedNeighbors =
-            this.getDisconnectedVisitedNeighbors(currentCell);
-          const neighborToConnect =
-            visitedNeighbors[
-              Math.floor(this.rngWallBreak() * visitedNeighbors.length)
-            ];
-          this.connectTwoCells(currentCell, neighborToConnect);
-        }
-        continue;
-      }
-
-      if (neighbors.length > 1) {
-        lfsNeighborsToVisitStack.push(currentCell);
-      }
-
-      const nextCell = neighbors[Math.floor(this.rng() * neighbors.length)];
-      lastCell = nextCell;
-      this.connectTwoCells(currentCell, nextCell);
-      nextCell.visit();
-      lfsNeighborsToVisitStack.push(nextCell);
-    }
-
-    this.openUpWallTowardsNextChunk();
   }
 }
 
