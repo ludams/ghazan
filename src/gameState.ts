@@ -45,7 +45,7 @@ export class GameState {
     pathTiles.forEach((tile) => this.tileContainer.addChild(tile.graphics));
     const startPathTiles = [];
     for (let x = -game.config.minGameTilePaddingLeft; x < startTile.x; x++) {
-      const tile = this.game.createPathTile(x, startTile.y, "");
+      const tile = this.game.createPathTile(x, startTile.y);
       tile.visitTimestamps.push(Date.now());
       tile.backTimestamps.push(Date.now());
       startPathTiles.push(tile);
@@ -63,7 +63,7 @@ export class GameState {
           Math.pow(x - circleCenterX, 2) + Math.pow(y - circleCenterY, 2) <=
           Math.pow(circleRadius, 2)
         ) {
-          const tile = this.game.createPathTile(x, y, "");
+          const tile = this.game.createPathTile(x, y);
           tile.visitTimestamps.push(Date.now());
           tile.backTimestamps.push(Date.now());
           startPathTiles.push(tile);
@@ -447,7 +447,8 @@ export class GameState {
     const allSurroundingTiles = this.getSurroundingTiles(crossingTile);
     const nextPossibleTilesToFollow = allSurroundingTiles
       .filter((tile) => tile !== comingFromTile)
-      .filter((tile) => tile.letter === undefined);
+      .filter((tile) => tile.letter === undefined)
+      .filter((tile) => tile.x >= 1);
 
     let duplicateSortedOut = false;
 
