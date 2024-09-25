@@ -3,12 +3,15 @@ import { sound } from "@pixi/sound";
 import { Application, Assets } from "pixi.js";
 import { Config } from "./config.ts";
 import { Game } from "./game.ts";
+import { generateRandomSeed } from "./random-seed.ts";
 
 export const config: Config = {
   wallColor: 0x000000,
   pixelSize: 25,
   fontSize: 20,
-  baseSeed: "demo",
+  baseSeed:
+    new URL(window.location.href).searchParams.get("seed") ??
+    generateRandomSeed(),
 
   minGameTilePaddingLeft: 15,
   maxGameTilePaddingLeft: 20,
