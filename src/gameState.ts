@@ -457,7 +457,7 @@ export class GameState {
   }
 
   generateRandomString(blockedCharacters: string[], length: number) {
-    const charset = "abcdefghijklmnopqrstuvwxyz ";
+    const charset = "abcdefghijklmnopqrstuvwxyz";
     const reducedCharsetForFirstLetter = charset
       .split("")
       .filter((char) => !blockedCharacters.includes(char));
