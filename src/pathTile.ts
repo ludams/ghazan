@@ -194,4 +194,9 @@ export class PathTile {
       h: 150,
     });
   }
+
+  destroy() {
+    this.graphics.destroy();
+    this.removeListener();
+  }
 }

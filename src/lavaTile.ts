@@ -30,44 +30,57 @@ export class LavaTile {
 
   render() {
     const pixelSize = this.game.config.pixelSize;
-    this.graphics.rect(0, 0, pixelSize, pixelSize).fill(0xff0000);
 
     const a = Math.random() * 0.1 + 1.0;
     const b = Math.random() * 0.1 + 1.0;
+
+    this.graphics
+      .rect(0, 0, pixelSize, pixelSize)
+      .fill(this.computeLavaColor(0, a, b));
+
     const now = Date.now();
 
     let listener = () => {
       if (this.isTileOutsideOfView()) {
-        this.game.app.ticker.remove(listener);
-        this.listener = null;
+        this.removeListener();
         return;
       }
-      const timeSinceLava = Date.now() - now;
-      const timeBase = 0.9998;
-      let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
-      const chroma = this.getAnimatedValue(0.17, 0.24, timeBase, timeSinceLava);
-      const hue = this.getAnimatedValue(64, 28, timeBase, timeSinceLava);
-
-      lightness =
-        lightness +
-        Math.sin((a * timeSinceLava) / 1000) *
-          Math.cos((b * timeSinceLava) / 1000) *
-          0.1;
-
+      let color = this.computeLavaColor(Date.now() - now, a, b);
       this.graphics
         .clear()
         .rect(0, 0, this.game.config.pixelSize, this.game.config.pixelSize)
-        .fill(
-          formatHex({
-            mode: "oklch",
-            l: lightness,
-            c: chroma,
-            h: hue,
-          }),
-        );
+        .fill(color);
     };
     this.game.app.ticker.add(listener);
     this.listener = listener;
+  }
+
+  private computeLavaColor(timeSinceLava: number, a: number, b: number) {
+    const timeBase = 0.9998;
+    let lightness = this.getAnimatedValue(0.76, 0.3, timeBase, timeSinceLava);
+    const chroma = this.getAnimatedValue(0.17, 0.24, timeBase, timeSinceLava);
+    const hue = this.getAnimatedValue(64, 28, timeBase, timeSinceLava);
+
+    lightness =
+      lightness +
+      Math.sin((a * timeSinceLava) / 1000) *
+        Math.cos((b * timeSinceLava) / 1000) *
+        0.1;
+
+    let color = formatHex({
+      mode: "oklch",
+      l: lightness,
+      c: chroma,
+      h: hue,
+    });
+    return color;
+  }
+
+  private removeListener() {
+    if (this.listener !== null) {
+      this.game.app.ticker.remove(this.listener);
+      this.listener = null;
+    }
   }
 
   private isTileOutsideOfView() {
@@ -87,5 +100,10 @@ export class LavaTile {
     time: number,
   ) {
     return endValue - (endValue - startValue) * timeBase ** time;
+  }
+
+  destroy() {
+    this.graphics.destroy();
+    this.removeListener();
   }
 }

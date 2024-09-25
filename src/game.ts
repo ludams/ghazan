@@ -1,11 +1,11 @@
-import { Application } from "pixi.js";
+import { Application, Text } from "pixi.js";
 import seedrandom, { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
 import { GameState } from "./gameState.ts";
 import { GridChunk } from "./maze-generation.ts";
 import { PathTile } from "./pathTile.ts";
 
-const letters = "a";
+const letters = "abcdefghijklmnopqrstuvwxyz ";
 
 export class Game {
   app: Application;
@@ -36,11 +36,33 @@ export class Game {
 
   start(x: number, y: number) {
     this.resetGameState(x, y);
+    let gameState = this.gameState;
+    if (gameState === null) {
+      throw new Error("Game state is null");
+    }
+    gameState.onPlayerDeath(() => {
+      gameState.destroy();
+      this.displayGameOver();
+    });
 
     window.addEventListener("keydown", (event: KeyboardEvent) => {
       const enteredLetter = event.key;
       this.handleInput(enteredLetter);
     });
+  }
+
+  displayGameOver() {
+    const gameOverText = new Text({
+      text: "Game Over",
+      style: {
+        fontFamily: "Jetbrainsmono Regular",
+        fontSize: this.config.fontSize,
+        fill: 0xffffff,
+      },
+    });
+    gameOverText.x = this.app.screen.width / 2 - gameOverText.width / 2;
+    gameOverText.y = this.app.screen.height / 2 - gameOverText.height / 2;
+    this.app.stage.addChild(gameOverText);
   }
 
   private resetGameState(x: number, y: number) {

@@ -14,6 +14,11 @@ export class GameState {
   currentTile: PathTile;
   renderedChunksCount: number;
 
+  moveLavaListener: (() => void) | null = null;
+  centerGameListener: (() => void) | null = null;
+
+  playerDeathListener: (() => void) | null = null;
+
   constructor(
     game: Game,
     pathTiles: Map<string, PathTile>,
@@ -94,21 +99,26 @@ export class GameState {
         this.game.config.maxGameTilePaddingLeft - 5,
         5,
       );
-      this.game.app.ticker.add(() => {
+      let moveLavaListener = () => {
         const now = Date.now();
         const timeDelta = now - lastLavaTime;
         const lavaSpeed = this.computeLavaSpeed(distanceWithLavaBaseSpeed);
-        const lavaMoveTime = 100 / lavaSpeed;
+        const lavaMoveTime = 1500 / lavaSpeed;
         if (timeDelta > lavaMoveTime) {
           console.log(Math.round(lavaSpeed * 100) / 100, lavaMoveTime);
           lastLavaTime = now;
           this.spreadLava();
+          this.checkIfPlayerIsDead();
         }
-      });
+      };
+      this.game.app.ticker.add(moveLavaListener);
+      this.moveLavaListener = moveLavaListener;
     }, 0);
-    this.game.app.ticker.add(() => {
+    let centerGameListener = () => {
       this.tryToCenterGame();
-    });
+    };
+    this.game.app.ticker.add(centerGameListener);
+    this.centerGameListener = centerGameListener;
   }
 
   private computeLavaSpeed(lavaDistanceWithBaseSpeed: number) {
@@ -231,6 +241,8 @@ export class GameState {
     nextTile.visit();
 
     this.currentTile = nextTile;
+
+    this.checkIfPlayerIsDead();
   }
 
   moveBack() {
@@ -243,6 +255,8 @@ export class GameState {
     lastTile.enter();
 
     this.currentTile = lastTile;
+
+    this.checkIfPlayerIsDead();
   }
 
   getPathTile(x: number, y: number): PathTile | undefined {
@@ -284,5 +298,44 @@ export class GameState {
 
   convertCoordinatesToNumber(x: number, y: number) {
     return x * (this.game.config.chunkCellsPerGrid * 2 + 1) + y;
+  }
+
+  onPlayerDeath(listener: () => void) {
+    this.playerDeathListener = listener;
+  }
+
+  checkIfPlayerIsDead() {
+    const { x, y } = this.currentTile;
+    const lavaTile = this.lavaTiles.get(`${x},${y}`);
+    if (lavaTile !== undefined && lavaTile.heat >= 1) {
+      console.log("You died!");
+      this.removeListeners();
+      if (this.playerDeathListener !== null) {
+        this.playerDeathListener();
+      }
+    }
+  }
+
+  removeListeners() {
+    if (this.moveLavaListener !== null) {
+      this.game.app.ticker.remove(this.moveLavaListener);
+      this.moveLavaListener = null;
+    }
+    if (this.centerGameListener !== null) {
+      this.game.app.ticker.remove(this.centerGameListener);
+      this.centerGameListener = null;
+    }
+  }
+
+  destroy() {
+    this.removeListeners();
+    for (const tile of this.pathTiles.values()) {
+      tile.destroy();
+    }
+    for (const tile of this.lavaTiles.values()) {
+      tile.destroy();
+    }
+    this.game.app.stage.removeChild(this.tileContainer);
+    this.tileContainer.destroy();
   }
 }
