@@ -414,9 +414,14 @@ export class GameState {
       englishWordsMap.entries(),
     )
       .filter(([length]) => length < totalLength - 1)
-      .filter(([_, words]) =>
-        words.some((word) => !blockedBeginnings.includes(word.charAt(0))),
-      );
+      .map(
+        ([letter, words]) =>
+          [
+            letter,
+            words.filter((word) => !blockedBeginnings.includes(word.charAt(0))),
+          ] as const,
+      )
+      .filter(([_, words]) => words.length > 0);
 
     const possibleLengthsForFirstWord = possibleWordsByLengthForFirstWord.map(
       ([length]) => length,
