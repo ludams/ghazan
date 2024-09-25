@@ -117,9 +117,8 @@ export class GameState {
         const now = Date.now();
         const timeDelta = now - lastLavaTime;
         const lavaSpeed = this.computeLavaSpeed(distanceWithLavaBaseSpeed);
-        const lavaMoveTime = 1500 / lavaSpeed;
+        const lavaMoveTime = 1000 / lavaSpeed;
         if (timeDelta > lavaMoveTime) {
-          console.log(Math.round(lavaSpeed * 100) / 100, lavaMoveTime);
           lastLavaTime = now;
           this.spreadLava();
           this.checkIfPlayerIsDead();

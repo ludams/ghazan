@@ -1,5 +1,5 @@
 import { formatHex } from "culori";
-import { Graphics, Text } from "pixi.js";
+import { Graphics, Text, UPDATE_PRIORITY } from "pixi.js";
 import { Game } from "./game.ts";
 
 export class PathTile {
@@ -13,8 +13,7 @@ export class PathTile {
   text?: Text;
   isCurrentPlayerTile = false;
   isHighlighted: boolean = false;
-  addedListener = false;
-  listener = this.updateColor.bind(this);
+  listener: (() => void) | null = null;
 
   unvisitedColor = 0x444444;
 
@@ -30,10 +29,10 @@ export class PathTile {
 
   render() {
     const pixelSize = this.game.config.pixelSize;
-      this.graphics
-          .clear()
-          .rect(0, 0, pixelSize, pixelSize)
-          .fill(this.unvisitedColor);
+    this.graphics
+      .clear()
+      .rect(0, 0, pixelSize, pixelSize)
+      .fill(this.unvisitedColor);
     this.updateColor();
   }
 
@@ -43,7 +42,7 @@ export class PathTile {
       return;
     }
     const text = new Text({
-      text: letter === " " ? "␣" : letter,
+      text: letter,
       style: {
         fontFamily: "Jetbrainsmono Regular",
         fontSize: this.game.config.fontSize,
@@ -58,6 +57,7 @@ export class PathTile {
     this.letter = letter;
     this.text = text;
     this.graphics?.addChild(text);
+    this.registerListener();
   }
 
   visit() {
@@ -101,16 +101,18 @@ export class PathTile {
   }
 
   private registerListener() {
-    if (this.visitTimestamps.length > 0 && !this.addedListener) {
-      this.addedListener = true;
+    if (this.listener === null) {
+      this.listener = () => {
+        this.updateColor();
+      };
       this.game.app.ticker.add(this.listener);
     }
   }
 
   private removeListener() {
-    if (this.addedListener) {
-      this.addedListener = false;
+    if (this.listener !== null) {
       this.game.app.ticker.remove(this.listener);
+      this.listener = null;
     }
   }
 
@@ -126,6 +128,7 @@ export class PathTile {
 
   private updateColor() {
     if (this.isTileOutsideOfView()) {
+      console.log("removing listener");
       this.removeListener();
       return;
     }
@@ -143,12 +146,21 @@ export class PathTile {
       this.visitTimestamps.length > 0 &&
       this.visitTimestamps.length === this.backTimestamps.length;
     if (!isVisited) {
+      let gameState = this.game.gameState;
+      let textAlpha = 1;
+      if (gameState !== null) {
+        const distance =
+          Math.abs(gameState.currentTile.x - this.x) +
+          Math.abs(gameState.currentTile.y - this.y);
+        textAlpha = Math.max(0, 1 - distance / 10);
+      }
       this.graphics
         .clear()
         .rect(0, 0, pixelSize, pixelSize)
         .fill(this.unvisitedColor);
       if (this.text) {
-          this.text.style.fill = 0xffffff;
+        this.text.style.fill = 0xffffff;
+        this.text.alpha = textAlpha;
       }
     } else {
       let backgroundColor: number | string;
