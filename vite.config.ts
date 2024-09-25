@@ -1,5 +1,5 @@
 export default {
-  base: "/themaze/",
+  base: "/ghazan/",
   build: {
     target: "es2022",
   },
