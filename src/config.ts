@@ -17,4 +17,6 @@ export type Config = {
   deadEndWallBreakRatio: number;
   chunkConnectingWallBreakRatio: number;
   chunkGenerationDistance: number;
+
+  crossingsToPreFillWithWords: 2;
 };
