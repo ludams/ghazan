@@ -142,10 +142,6 @@ export class Tile {
   updateState(update: (previousState: TileState) => Partial<TileState>) {
     const currentState: TileState = this.nextState ?? this.state;
     let stateUpdate = update(currentState);
-    if (Object.keys(stateUpdate).length === 0) {
-      // TODO: Remove for performance reasons
-      console.warn("Empty state update");
-    }
     const newState = {
       ...currentState,
       ...stateUpdate,
@@ -165,11 +161,9 @@ export class Tile {
     if (this.nextState !== undefined) {
       this.state = this.nextState;
       this.nextState = undefined;
-      // TODO: Render state changes and animations
       this.renderStateChange(distance);
       updated = true;
     } else {
-      // TODO: Render animations
       if (this.state.heat >= 1) {
         this.updateLavaAnimation();
         updated = true;
