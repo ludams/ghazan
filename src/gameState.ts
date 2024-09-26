@@ -1,9 +1,8 @@
-import { Container } from "pixi.js";
-import { Game } from "./game.ts";
-import { LavaTile } from "./lavaTile.ts";
-import { PathTile } from "./pathTile.ts";
-import { words } from "./languages/english_10k.json";
+import { Container, Ticker } from "pixi.js";
 import seedrandom from "seedrandom";
+import { Game } from "./game.ts";
+import { words } from "./languages/english_10k.json";
+import { Tile } from "./tile.ts";
 
 const englishWords: string[] = words;
 const englishWordsMap: Map<number, string[]> = new Map();
@@ -14,41 +13,45 @@ englishWords.forEach((word) => {
   englishWordsMap.get(word.length)!.push(word.toLowerCase());
 });
 
+export type TileCoordinate = [number, number];
+
 export class GameState {
   game: Game;
+  tiles: Map<number, Tile> = new Map();
   tileContainer: Container;
-  private pathTiles: Map<string, PathTile>;
-  lavaTiles: Map<string, LavaTile> = new Map();
-  lavaTilesSurroundedByLava: Set<number> = new Set();
-  history: PathTile[] = [];
-  startTile: PathTile;
-  currentTile: PathTile;
+  history: TileCoordinate[] = [];
+  startCoordinate: TileCoordinate;
+  currentCoordinate: TileCoordinate;
   renderedChunksCount: number;
   randomWordGenerator: () => number;
 
-  moveLavaListener: (() => void) | null = null;
-  centerGameListener: (() => void) | null = null;
+  moveLavaListener: ((ticker: Ticker) => void) | null = null;
+  centerGameListener: ((ticker: Ticker) => void) | null = null;
 
   playerDeathListener: ((score: number) => void) | null = null;
 
   constructor(
     game: Game,
-    pathTiles: Map<string, PathTile>,
-    startTile: PathTile,
+    pathCoordinates: TileCoordinate[],
+    startCoordinate: TileCoordinate,
     renderedChunksCount: number,
   ) {
     this.game = game;
     this.tileContainer = new Container({
       x: game.config.minGameTilePaddingLeft * game.config.pixelSize,
     });
-    this.pathTiles = pathTiles;
-    pathTiles.forEach((tile) => this.tileContainer.addChild(tile.graphics));
-    const startPathTiles = [];
-    for (let x = -game.config.minGameTilePaddingLeft; x < startTile.x; x++) {
-      const tile = this.game.createPathTile(x, startTile.y);
-      tile.visitTimestamps.push(Date.now());
-      tile.backTimestamps.push(Date.now());
-      startPathTiles.push(tile);
+    const minY = 1;
+    const maxY = game.config.chunkCellsPerGrid * 2;
+    const minX = 1;
+    const maxX = Math.max(...pathCoordinates.map(([x]) => x)) + 1;
+    for (let x = minX; x < maxX; x++) {
+      for (let y = minY; y < maxY; y++) {
+        const isPath = pathCoordinates.some(
+          ([pathX, pathY]) => pathX === x && pathY === y,
+        );
+        const tile = new Tile(x, y, isPath, game.config);
+        this.addTile(tile);
+      }
     }
 
     const circleCenterX = -this.game.config.minGameTilePaddingLeft;
@@ -57,36 +60,78 @@ export class GameState {
       this.game.config.minGameTilePaddingLeft -
       this.game.config.lavaStartOffset;
 
-    for (let x = -this.game.config.minGameTilePaddingLeft; x < 0; x++) {
-      for (let y = 0; y < this.game.config.chunkCellsPerGrid * 2; y++) {
+    for (let x = -this.game.config.minGameTilePaddingLeft; x <= 0; x++) {
+      for (let y = 1; y < this.game.config.chunkCellsPerGrid * 2; y++) {
+        let isPath = false;
         if (
           Math.pow(x - circleCenterX, 2) + Math.pow(y - circleCenterY, 2) <=
-          Math.pow(circleRadius, 2)
+            Math.pow(circleRadius, 2) ||
+          y === startCoordinate[1]
         ) {
-          const tile = this.game.createPathTile(x, y);
-          tile.visitTimestamps.push(Date.now());
-          tile.backTimestamps.push(Date.now());
-          startPathTiles.push(tile);
+          isPath = true;
         }
+
+        const tile = new Tile(x, y, isPath, game.config, true);
+        this.addTile(tile);
       }
     }
-    this.addPathTiles(startPathTiles);
-    this.startTile = startTile;
-    this.currentTile = startTile;
+    this.startCoordinate = startCoordinate;
+    this.currentCoordinate = startCoordinate;
     this.renderedChunksCount = renderedChunksCount;
     this.randomWordGenerator = seedrandom(game.config.baseSeed + "Words");
+
+    let lastUpdateTime = Date.now();
+    game.app.ticker.add(() => {
+      const currentMinVisibleX =
+        -this.tileContainer.position.x / game.config.pixelSize;
+      const currentMaxVisibleX =
+        currentMinVisibleX + game.config.chunkCellsPerGrid * 2 * 3;
+
+      const now = Date.now();
+      if (now - lastUpdateTime < 20) {
+        return;
+      }
+      lastUpdateTime = now;
+      let count = 0;
+      let maxY = 0;
+      let minY = 1000;
+      for (let tile of this.tiles.values()) {
+        maxY = Math.max(maxY, tile.x);
+        minY = Math.min(minY, tile.x);
+        const isVisible =
+          tile.x >= currentMinVisibleX - 1 && tile.x <= currentMaxVisibleX + 1;
+        const updated = tile.updateGraphics(
+          this.currentCoordinate[0],
+          this.currentCoordinate[1],
+          isVisible,
+        );
+        if (updated) {
+          count++;
+        }
+      }
+      console.log(`Updated ${count} tiles`);
+    });
   }
 
   start() {
-    for (const tile of this.pathTiles.values()) {
-      tile.render();
+    for (const tile of this.tiles.values()) {
+      tile.updateGraphics(
+        this.startCoordinate[0],
+        this.startCoordinate[1],
+        true,
+      );
+    }
+    const currentTile = this.findTile(...this.startCoordinate);
+    if (currentTile === null) {
+      throw new Error(`Tile at ${this.startCoordinate} not found`);
     }
     this.renderNextWords(
-      this.currentTile,
+      this.startCoordinate,
       null,
       this.game.config.crossingsToPreFillWithWords,
     );
-    this.currentTile.visit();
+
+    currentTile.visit();
     this.game.app.stage.addChild(this.tileContainer);
     setTimeout(() => {
       let initialLavaFields = [];
@@ -97,6 +142,12 @@ export class GameState {
         this.game.config.lavaStartOffset;
       const x = -this.game.config.minGameTilePaddingLeft;
       for (let y = 0; y < this.game.config.chunkCellsPerGrid * 2; y++) {
+        let tile = this.findTile(x, y);
+        if (tile === null) {
+          tile = new Tile(x, y, true, this.game.config, true);
+          this.tileContainer.addChild(tile.graphics);
+          continue;
+        }
         if (
           Math.pow(x - circleCenterX, 2) + Math.pow(y - circleCenterY, 2) <=
           Math.pow(circleRadius, 2)
@@ -106,10 +157,12 @@ export class GameState {
       }
 
       for (let [x, y] of initialLavaFields) {
-        let lavaTile = new LavaTile(this.game, x, y);
-        lavaTile.increaseHeat(1);
-        this.addLavaTile(lavaTile);
-        this.addLavaTile(new LavaTile(this.game, x + 1, y));
+        const tile = this.findTile(x, y);
+        if (tile === null) {
+          console.warn(`Tile at ${x},${y} not found`);
+          continue;
+        }
+        tile?.convertToLava();
       }
 
       let lastLavaTime = Date.now();
@@ -131,18 +184,43 @@ export class GameState {
       this.game.app.ticker.add(moveLavaListener);
       this.moveLavaListener = moveLavaListener;
     }, 0);
-    let centerGameListener = () => {
-      this.tryToCenterGame();
+    setInterval(() => {
+      const currentMinVisibleX =
+        -this.tileContainer.position.x / this.game.config.pixelSize;
+      const xToRemoveBefore = currentMinVisibleX - 200;
+      const tilesToRemove = [...this.tiles.values()].filter(
+        (tile) => tile.x < xToRemoveBefore,
+      );
+      for (let tile of tilesToRemove) {
+        tile.destroy();
+        this.tiles.delete(this.convertCoordinatesToIndex(tile.x, tile.y));
+      }
+      if (tilesToRemove.length > 0) {
+        console.log(`Removed ${tilesToRemove.length} tiles`);
+      }
+    }, 1000);
+    let centerGameListener = (ticker: Ticker) => {
+      this.tryToCenterGame(ticker);
     };
     this.game.app.ticker.add(centerGameListener);
     this.centerGameListener = centerGameListener;
   }
 
+  private findTile(x: number, y: number) {
+    const index = this.convertCoordinatesToIndex(x, y);
+    return this.tiles.get(index) ?? null;
+  }
+
+  addTile(tile: Tile) {
+    this.tileContainer.addChild(tile.graphics);
+    this.tiles.set(this.convertCoordinatesToIndex(tile.x, tile.y), tile);
+  }
+
   private computeLavaSpeed(lavaDistanceWithBaseSpeed: number) {
-    const playerX = this.currentTile.x;
+    const playerX = this.currentCoordinate[0];
     const furthestLavaX = Math.max(
-      ...[...this.lavaTiles.values()]
-        .filter((tile) => tile.heat >= 1)
+      ...[...this.tiles.values()]
+        .filter((tile) => tile.getHeat() >= 1)
         .map((tile) => tile.x),
     );
     const distanceToLava = playerX - furthestLavaX;
@@ -150,13 +228,13 @@ export class GameState {
       distanceToLava - lavaDistanceWithBaseSpeed,
       0,
     );
-    const baseSpeed = Math.log(playerX) / Math.log(50) + 1;
+    const baseSpeed = playerX <= 0 ? 1 : (playerX + 9) / 50;
 
     return 1.1 ** bufferedDistance * baseSpeed;
   }
 
-  private tryToCenterGame() {
-    const playerPixelX = this.currentTile.x * this.game.config.pixelSize;
+  private tryToCenterGame(ticker: Ticker) {
+    const playerPixelX = this.currentCoordinate[0] * this.game.config.pixelSize;
     const borderPadding = playerPixelX + this.tileContainer.position.x;
     const minPaddingPx =
       this.game.config.minGameTilePaddingLeft * this.game.config.pixelSize;
@@ -169,170 +247,154 @@ export class GameState {
       diff = maxPaddingPx - borderPadding;
     }
 
-    const spring = 0.01;
+    const spring = 0.001;
     this.tileContainer.position.x =
-      this.tileContainer.position.x + diff * spring;
+      this.tileContainer.position.x + diff * spring * ticker.deltaMS;
   }
 
   private spreadLava() {
-    const lavaTiles = [...this.lavaTiles.values()];
-    const lavaTileObjects = lavaTiles.map((tile) => {
-      return {
-        x: tile.x,
-        y: tile.y,
-        heat: tile.heat,
-        visited:
-          (this.getPathTile(tile.x, tile.y)?.visitTimestamps.length ?? 0) > 0,
-      };
-    });
-    for (const lt of lavaTileObjects) {
-      if (
-        this.lavaTilesSurroundedByLava.has(
-          this.convertCoordinatesToNumber(lt.x, lt.y),
-        )
-      ) {
+    const currentMinVisibleX =
+      -this.tileContainer.position.x / this.game.config.pixelSize;
+    const xToRemoveBefore = currentMinVisibleX - 200;
+    for (let tile of this.tiles.values()) {
+      if (tile.x < xToRemoveBefore) {
         continue;
       }
-      this.spreadLavaToSurroundingTiles(lt);
+      tile.simulateHeat((x, y) => {
+        return this.findTile(x, y)?.getHeat() ?? 0;
+      });
     }
   }
 
-  private spreadLavaToSurroundingTiles(lavaTile: {
-    x: number;
-    y: number;
-    heat: number;
-  }) {
-    let neighbours = [
-      { x: lavaTile.x, y: lavaTile.y - 1 },
-      { x: lavaTile.x + 1, y: lavaTile.y },
-      { x: lavaTile.x, y: lavaTile.y + 1 },
-      { x: lavaTile.x - 1, y: lavaTile.y },
-    ].filter(({ x, y }) => {
-      return (
-        x >= -this.game.config.minGameTilePaddingLeft &&
-        y > 0 &&
-        y < this.game.config.chunkCellsPerGrid * 2
-      );
-    });
-    let allNeighborsAreLava = true;
-    for (let { x, y } of neighbours) {
-      let tile = this.lavaTiles.get(`${x},${y}`);
-      if (tile === undefined) {
-        tile = new LavaTile(this.game, x, y);
-        this.addLavaTile(tile);
-      } else {
-        const isNeighborPath = this.pathTiles.has(`${x},${y}`);
-
-        if (lavaTile.heat >= 1) {
-          let heatDelta: number;
-          const neighborPathTile = this.getPathTile(x, y);
-          const isNeighborVisited =
-            (neighborPathTile?.visitTimestamps.length ?? 0) > 0;
-          if (isNeighborVisited) {
-            heatDelta = 1;
-          } else {
-            if (isNeighborPath) {
-              heatDelta = 0.34;
-            } else {
-              heatDelta = 0.034;
-            }
-          }
-          tile.increaseHeat(heatDelta);
-        }
-      }
-      if (tile.heat < 1) {
-        allNeighborsAreLava = false;
-      }
+  moveTo(nextTile: Tile) {
+    const currentTile = this.findTile(...this.currentCoordinate);
+    if (currentTile === null) {
+      throw new Error(`Tile at ${this.currentCoordinate} not found`);
     }
-    if (allNeighborsAreLava && lavaTile.heat >= 1) {
-      this.lavaTilesSurroundedByLava.add(
-        this.convertCoordinatesToNumber(lavaTile.x, lavaTile.y),
-      );
-    }
-  }
+    this.history.push(this.currentCoordinate);
 
-  moveTo(nextTile: PathTile) {
-    this.history.push(this.currentTile);
-
-    this.currentTile.exit();
+    currentTile.exit();
     nextTile.visit();
-    this.updateHighlighting(this.currentTile, nextTile);
+    this.updateHighlighting(currentTile, nextTile);
 
-    this.currentTile = nextTile;
+    this.currentCoordinate = [nextTile.x, nextTile.y];
 
     this.checkIfPlayerIsDead();
 
     this.renderNextWordsIfNecessary();
   }
 
-  private updateHighlighting(oldTile: PathTile, nextTile: PathTile) {
-    const oldNeighbors = this.getSurroundingTiles(oldTile);
+  private updateHighlighting(oldTile: Tile, nextTile: Tile) {
+    const oldNeighbors = this.getSurroundingPathTiles([oldTile.x, oldTile.y]);
     for (const neighbor of oldNeighbors) {
-      neighbor.unhighlightForPress();
+      neighbor.setIsNextPlayerTile(false);
     }
-    const neighbors = this.getSurroundingTiles(nextTile);
+    const neighbors = this.getSurroundingPathTiles([nextTile.x, nextTile.y]);
     for (const neighbor of neighbors) {
-      if (neighbor === this.history[this.history.length - 1]) {
+      const neighborCoordinates = [neighbor.x, neighbor.y];
+      let lastTile = this.history[this.history.length - 1];
+      if (lastTile === undefined) {
         continue;
       }
-      neighbor.highlightForPress();
+      if (
+        neighborCoordinates[0] === lastTile[0] &&
+        neighborCoordinates[1] === lastTile[1]
+      ) {
+        continue;
+      }
+      neighbor.setIsNextPlayerTile(true);
     }
   }
 
   moveBack() {
-    if (this.history.length === 0) {
+    const currentTile = this.findTile(...this.currentCoordinate);
+    if (currentTile === null) {
+      throw new Error(`Tile at ${this.currentCoordinate} not found`);
+    }
+    const lastTileCoordinate = this.history.pop();
+    if (lastTileCoordinate === undefined) {
       return;
     }
-    const lastTile = this.history.pop() as PathTile;
 
-    this.currentTile.back();
+    const lastTile = this.findTile(...lastTileCoordinate);
+    if (lastTile === null) {
+      throw new Error(`Tile at ${this.currentCoordinate} not found`);
+    }
+
+    currentTile.back();
     lastTile.enter();
-    this.updateHighlighting(this.currentTile, lastTile);
+    this.updateHighlighting(currentTile, lastTile);
 
-    this.currentTile = lastTile;
+    this.currentCoordinate = lastTileCoordinate;
 
     this.checkIfPlayerIsDead();
   }
 
-  getPathTile(x: number, y: number): PathTile | undefined {
-    return this.pathTiles.get(`${x},${y}`);
+  getSurroundingPathTiles(coord: TileCoordinate) {
+    return this.getNeighborIndices(coord)
+      .map((index) => this.tiles.get(index))
+      .filter((tile) => tile !== undefined && tile.isPath) as Tile[];
   }
 
-  addLavaTile(tile: LavaTile) {
-    this.lavaTiles.set(`${tile.x},${tile.y}`, tile);
-    this.tileContainer.addChild(tile.graphics);
-  }
-
-  getSurroundingTiles(tile: PathTile): PathTile[] {
-    const { x, y } = tile;
-    return [
-      this.getPathTile(x + 1, y),
-      this.getPathTile(x, y - 1),
-      this.getPathTile(x, y + 1),
-      this.getPathTile(x - 1, y),
-    ].filter((tile) => tile !== undefined) as PathTile[];
-  }
-
-  findNextTile(letter: string) {
-    const surroundingTiles = this.getSurroundingTiles(this.currentTile);
-    return surroundingTiles.find(
-      (tile) =>
-        tile.letter === letter &&
-        (this.history.length === 0 ||
-          tile !== this.history[this.history.length - 1]),
+  private getNeighborIndices(coord: TileCoordinate) {
+    return this.getNeighborCoordinates(coord).map(([x, y]) =>
+      this.convertCoordinatesToIndex(x, y),
     );
   }
 
-  addPathTiles(tiles: PathTile[]) {
-    for (const tile of tiles) {
-      this.pathTiles.set(`${tile.x},${tile.y}`, tile);
-      this.tileContainer.addChild(tile.graphics);
-      tile.render();
+  private getNeighborCoordinates(coord: TileCoordinate): TileCoordinate[] {
+    const [x, y] = coord;
+    return [
+      [x, y - 1],
+      [x + 1, y],
+      [x, y + 1],
+      [x - 1, y],
+    ];
+  }
+
+  findNextTile(letter: string) {
+    const surroundingTiles = this.getSurroundingPathTiles(
+      this.currentCoordinate,
+    );
+    let lastTile: Tile | null = null;
+    if (this.history.length > 0) {
+      const lastTileCoordinate = this.history[this.history.length - 1];
+      lastTile = this.findTile(lastTileCoordinate[0], lastTileCoordinate[1]);
+    }
+    return surroundingTiles.find(
+      (tile) =>
+        tile.letter === letter &&
+        (this.history.length === 0 || tile !== lastTile),
+    );
+  }
+
+  addPaths(coordinates: TileCoordinate[]) {
+    const highestX = Math.max(
+      ...Array(...this.tiles.values()).map((tile) => tile.x),
+    );
+    const highestGeneratedX = Math.max(
+      ...coordinates.map(([x, _]) => x),
+      highestX,
+    );
+    for (let x = highestX + 1; x <= highestGeneratedX; x++) {
+      for (let y = 1; y < this.game.config.chunkCellsPerGrid * 2; y++) {
+        const isPath = coordinates.some(
+          ([pathX, pathY]) => pathX === x && pathY === y,
+        );
+        const tile = new Tile(x, y, isPath, this.game.config);
+        this.addTile(tile);
+      }
     }
   }
 
-  convertCoordinatesToNumber(x: number, y: number) {
+  convertCoordinatesToIndex(x: number, y: number) {
     return x * (this.game.config.chunkCellsPerGrid * 2 + 1) + y;
+  }
+
+  convertIndexToCoordinates(index: number) {
+    const y = index % (this.game.config.chunkCellsPerGrid * 2 + 1);
+    const x = (index - y) / (this.game.config.chunkCellsPerGrid * 2 + 1);
+    return [x, y];
   }
 
   onPlayerDeath(listener: (score: number) => void) {
@@ -340,11 +402,10 @@ export class GameState {
   }
 
   checkIfPlayerIsDead() {
-    const { x, y } = this.currentTile;
-    const lavaTile = this.lavaTiles.get(`${x},${y}`);
-    if (lavaTile !== undefined && lavaTile.heat >= 1) {
+    const [x, y] = this.currentCoordinate;
+    const tile = this.findTile(x, y);
+    if (tile !== null && tile.getHeat() >= 1) {
       console.log("You died!");
-      this.removeListeners();
       if (this.playerDeathListener !== null) {
         this.playerDeathListener(x);
       }
@@ -364,10 +425,7 @@ export class GameState {
 
   destroy() {
     this.removeListeners();
-    for (const tile of this.pathTiles.values()) {
-      tile.destroy();
-    }
-    for (const tile of this.lavaTiles.values()) {
+    for (let tile of this.tiles.values()) {
       tile.destroy();
     }
     this.game.app.stage.removeChild(this.tileContainer);
@@ -375,7 +433,9 @@ export class GameState {
   }
 
   private renderNextWordsIfNecessary() {
-    const surroundingTiles = this.getSurroundingTiles(this.currentTile);
+    const surroundingTiles = this.getSurroundingPathTiles(
+      this.currentCoordinate,
+    );
 
     // only one direction "I'm in a corridor, have one option, so I'm not at a crossing" so the algorithm must already have generated a letter for the next tile
     if (surroundingTiles.length <= 2) {
@@ -383,8 +443,8 @@ export class GameState {
     }
 
     this.renderNextWords(
-      this.currentTile,
-      this.history[this.history.length - 1],
+      this.currentCoordinate,
+      this.history[this.history.length - 1] ?? null,
       this.game.config.crossingsToPreFillWithWords,
     );
   }
@@ -477,30 +537,35 @@ export class GameState {
   }
 
   private renderNextWords(
-    crossingTile: PathTile,
-    comingFromTile: PathTile | null,
+    crossingTile: TileCoordinate,
+    comingFromTile: TileCoordinate | null,
     crossingsToPass: number,
   ) {
-    const allSurroundingTiles = this.getSurroundingTiles(crossingTile);
+    const allSurroundingTiles = this.getSurroundingPathTiles(crossingTile);
 
     let tilePathsToGenerateWordsFor = this.getPathsToFollowNext(
-      allSurroundingTiles,
+      this.getNeighborCoordinates(crossingTile),
       comingFromTile,
       crossingTile,
     );
 
-    tilePathsToGenerateWordsFor.forEach((pathTiles) => {
+    for (const pathTiles of tilePathsToGenerateWordsFor) {
       const lastTile = pathTiles[pathTiles.length - 1];
-      const endsInDeadEnd = this.getSurroundingTiles(lastTile).length === 1;
+      const endsInDeadEnd = this.getSurroundingPathTiles(lastTile).length === 1;
+      const firstTile = this.findTile(...pathTiles[0]);
+      if (firstTile === null) {
+        console.warn(`Tile at ${lastTile} not found`);
+        continue;
+      }
 
-      if (pathTiles[0].letter === undefined) {
+      if (firstTile.letter === undefined) {
         // get restrictions for beginning (current crossing) and ending letters (next crossing)
         let chosenWord = this.getRandomWordsOfTotalLengthWithConstraints(
           pathTiles.length - (endsInDeadEnd ? 0 : 1),
           allSurroundingTiles
             .map((tile) => tile.letter)
             .filter((letter): letter is string => letter !== undefined),
-          this.getSurroundingTiles(pathTiles[pathTiles.length - 1])
+          this.getSurroundingPathTiles(pathTiles[pathTiles.length - 1])
             .map((tile) => tile.letter)
             .filter((letter): letter is string => letter !== undefined),
         );
@@ -516,49 +581,58 @@ export class GameState {
 
         chosenWord += " ";
 
-        pathTiles.forEach((tile, index) => {
-          tile.setLetter(chosenWord.charAt(index));
+        pathTiles.forEach(([x, y], index) => {
+          const tile = this.findTile(x, y);
+          tile?.setLetter(chosenWord.charAt(index));
         });
       }
 
       if (!endsInDeadEnd && crossingsToPass > 1) {
         this.renderNextWords(
           pathTiles[pathTiles.length - 1],
-          pathTiles[pathTiles.length - 2],
+          pathTiles[pathTiles.length - 2] ?? null,
           crossingsToPass - 1,
         );
       }
-    });
+    }
+  }
+
+  private isPathTile(coordinate: TileCoordinate) {
+    const tile = this.findTile(...coordinate);
+    return tile !== null && tile.isPath;
   }
 
   private getPathsToFollowNext(
-    allSurroundingTiles: PathTile[],
-    comingFromTile: PathTile | null,
-    crossingTile: PathTile,
+    allSurroundingTiles: TileCoordinate[],
+    comingFromTile: TileCoordinate | null,
+    crossingTile: TileCoordinate,
   ) {
     let tilePathsToGenerateWordsFor = [];
     const nextPossibleTilesToFollow = allSurroundingTiles
-      .filter((tile) => tile !== comingFromTile)
-      .filter((tile) => tile.x >= 1);
+      .filter((tile) => this.isPathTile(tile))
+      .filter((tile) => !this.isSameCoordinate(tile, comingFromTile))
+      .filter((tile) => tile[0] >= 1);
     let duplicateSortedOut = false;
     for (const tile of nextPossibleTilesToFollow) {
-      const tilesTillIncludingNextCrossing: PathTile[] = [];
+      const tilesTillIncludingNextCrossing: TileCoordinate[] = [];
 
       let previousTile = crossingTile;
-      let currentTile: PathTile = tile;
+      let currentTile = tile;
 
       while (true) {
         tilesTillIncludingNextCrossing.push(currentTile);
-        const nextSurroundingTiles = this.getSurroundingTiles(
+        const nextSurroundingTiles = this.getSurroundingPathTiles(
           currentTile,
-        ).filter((tile) => tile !== previousTile);
+        ).filter(
+          (tile) => tile.x !== previousTile[0] || tile.y !== previousTile[1],
+        );
 
         if (nextSurroundingTiles.length !== 1 && previousTile !== null) {
           break;
         }
 
         previousTile = currentTile;
-        currentTile = nextSurroundingTiles[0];
+        currentTile = [nextSurroundingTiles[0].x, nextSurroundingTiles[0].y];
       }
 
       const lastTile =
@@ -572,5 +646,18 @@ export class GameState {
       tilePathsToGenerateWordsFor.push(tilesTillIncludingNextCrossing);
     }
     return tilePathsToGenerateWordsFor;
+  }
+
+  private isSameCoordinate(
+    coord1: TileCoordinate | null,
+    coord2: TileCoordinate | null,
+  ) {
+    if (coord1 === null) {
+      return coord2 === null;
+    }
+    if (coord2 === null) {
+      return false;
+    }
+    return coord1[0] === coord2[0] && coord1[1] === coord2[1];
   }
 }

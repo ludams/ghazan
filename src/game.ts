@@ -1,12 +1,8 @@
 import { sound } from "@pixi/sound";
 import { Application, Text } from "pixi.js";
-import { PRNG } from "seedrandom";
 import { Config } from "./config.ts";
-import { GameState } from "./gameState.ts";
+import { GameState, TileCoordinate } from "./gameState.ts";
 import { GridChunk } from "./maze-generation.ts";
-import { PathTile } from "./pathTile.ts";
-
-const letters = "abcdefghijklmnopqrstuvwxyz ";
 
 export class Game {
   app: Application;
@@ -17,21 +13,10 @@ export class Game {
     this.app = app;
     this.config = config;
   }
-
-  static randomLetter(rng: PRNG) {
-    return letters[Math.floor(rng() * letters.length)];
-  }
-
-  createPathTile(x: number, y: number): PathTile {
-    return new PathTile(this, x, y);
-  }
-
-  private generateMazeForIndex(index: number) {
+  private generateMazeForIndex(index: number): [number, number][] {
     const newGridChunk = new GridChunk(index, this.config);
     newGridChunk.generateMaze();
-    return newGridChunk.corridorMazePixels.map((pixel) =>
-      this.createPathTile(pixel.x + 1, pixel.y + 1),
-    );
+    return newGridChunk.corridorMazePixels.map(({ x, y }) => [x + 1, y + 1]);
   }
 
   start(x: number, y: number) {
@@ -111,26 +96,20 @@ export class Game {
     const initiallyRenderedChunkCount = this.config.chunkGenerationDistance;
     const tiles = this.createInitialTilesMap(initiallyRenderedChunkCount);
 
-    let startTile = tiles.get(`${x},${y}`);
-    if (startTile === undefined) {
-      throw new Error(`Tile at ${x},${y} not found`);
-    }
+    let startCoordinate: TileCoordinate = [x, y];
     this.gameState = new GameState(
       this,
       tiles,
-      startTile,
+      startCoordinate,
       initiallyRenderedChunkCount,
     );
     this.gameState.start();
   }
 
-  private createInitialTilesMap(initialChunkCount: number) {
-    return new Map<string, PathTile>(
-      Array(initialChunkCount)
-        .fill(0)
-        .flatMap((_, index) => this.generateMazeForIndex(index))
-        .map((tile) => [`${tile.x},${tile.y}`, tile]),
-    );
+  private createInitialTilesMap(initialChunkCount: number): [number, number][] {
+    return Array(initialChunkCount)
+      .fill(0)
+      .flatMap((_, index) => this.generateMazeForIndex(index));
   }
 
   handleInput(letter: string) {
@@ -155,7 +134,7 @@ export class Game {
   private renderNextChunkIfNecessary(gameState: GameState) {
     const tilesPerChunk = this.config.chunkCellsPerGrid * 2;
     const shouldRenderNextChunk =
-      gameState.currentTile.x / tilesPerChunk >
+      gameState.currentCoordinate[0] / tilesPerChunk >
       gameState.renderedChunksCount - this.config.chunkGenerationDistance;
     if (shouldRenderNextChunk) {
       this.renderNextChunk(gameState);
@@ -163,11 +142,11 @@ export class Game {
   }
 
   private renderNextChunk(gameState: GameState) {
+    console.log("Rendering next chunk");
     const newTilesToRender = this.generateMazeForIndex(
       gameState.renderedChunksCount,
     );
-    gameState.addPathTiles(newTilesToRender);
+    gameState.addPaths(newTilesToRender);
     gameState.renderedChunksCount++;
-    newTilesToRender.forEach((tile) => tile.render());
   }
 }
