@@ -81,11 +81,9 @@ export class GameState {
     for (const tile of this.pathTiles.values()) {
       tile.render();
     }
-    this.renderNextWords(
-      this.currentTile,
-      null,
-      this.game.config.crossingsToPreFillWithWords,
-    );
+    for (let i = 1; i <= this.game.config.crossingsToPreFillWithWords; i++) {
+      this.renderNextWords(this.currentTile, null, i);
+    }
     this.currentTile.visit();
     this.game.app.stage.addChild(this.tileContainer);
     setTimeout(() => {
