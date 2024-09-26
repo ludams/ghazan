@@ -142,7 +142,6 @@ export class Game {
   }
 
   private renderNextChunk(gameState: GameState) {
-    console.log("Rendering next chunk");
     const newTilesToRender = this.generateMazeForIndex(
       gameState.renderedChunksCount,
     );

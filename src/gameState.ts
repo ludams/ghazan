@@ -109,7 +109,6 @@ export class GameState {
           count++;
         }
       }
-      console.log(`Updated ${count} tiles`);
     });
   }
 
@@ -192,9 +191,6 @@ export class GameState {
       for (let tile of tilesToRemove) {
         tile.destroy();
         this.tiles.delete(this.convertCoordinatesToIndex(tile.x, tile.y));
-      }
-      if (tilesToRemove.length > 0) {
-        console.log(`Removed ${tilesToRemove.length} tiles`);
       }
     }, 1000);
     let centerGameListener = (ticker: Ticker) => {
