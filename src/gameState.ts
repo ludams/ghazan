@@ -125,11 +125,9 @@ export class GameState {
     if (currentTile === null) {
       throw new Error(`Tile at ${this.startCoordinate} not found`);
     }
-    this.renderNextWords(
-      this.startCoordinate,
-      null,
-      this.game.config.crossingsToPreFillWithWords,
-    );
+    for (let i = 1; i <= this.game.config.crossingsToPreFillWithWords; i++) {
+      this.renderNextWords(this.startCoordinate, null, i);
+    }
 
     currentTile.visit();
     this.game.app.stage.addChild(this.tileContainer);
