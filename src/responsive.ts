@@ -5,10 +5,10 @@ export function makeGameSceneResponsive(app: Application, config: Config) {
   const resize = () => resizeGameSceneToFitScreen(app, config);
   window.addEventListener("resize", resize);
   const tryResizeMultipleTimes = () => {
-    Array(10)
+    Array(20)
       .fill(0)
       .forEach((_, step) => {
-        setTimeout(resize, step * 100);
+        setTimeout(resize, step * 200);
       });
   };
   const inputElement = document.getElementById("input");
