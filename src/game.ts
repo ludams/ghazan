@@ -3,6 +3,7 @@ import { Application, Text } from "pixi.js";
 import { Config } from "./config.ts";
 import { GameState, TileCoordinate } from "./gameState.ts";
 import { GridChunk } from "./maze-generation.ts";
+import { Tile } from "./tile.ts";
 
 export class Game {
   app: Application;
@@ -61,10 +62,11 @@ export class Game {
       this.displayGameOver(score);
     });
 
-    window.addEventListener("keydown", (event: KeyboardEvent) => {
-      const enteredLetter = event.key;
-      this.handleInput(enteredLetter);
-    });
+    this.config.inputElement.addEventListener("beforeinput", (event) =>
+      this.handleInput(event),
+    );
+
+    this.config.inputElement.focus();
   }
 
   displayGameOver(score: number) {
@@ -112,20 +114,30 @@ export class Game {
       .flatMap((_, index) => this.generateMazeForIndex(index));
   }
 
-  handleInput(letter: string) {
+  handleInput(event: InputEvent) {
     const gameState = this.gameState;
     if (gameState === null) {
       return;
     }
-    const nextTile = gameState.findNextTile(letter);
+
+    let nextTile: Tile | undefined = undefined;
+    if (event.inputType.startsWith("insert")) {
+      nextTile = gameState.findNextTile(event.data!);
+    }
 
     if (nextTile !== undefined) {
       sound.play(`pick${Math.floor(Math.random() * 6) + 1}`);
       gameState.moveTo(nextTile);
       this.renderNextChunkIfNecessary(gameState);
-    } else if (letter === "Backspace" && history.length > 0) {
+    } else if (
+      event.inputType === "deleteContentBackward" &&
+      history.length > 0
+    ) {
       sound.play(`return${Math.floor(Math.random() * 5) + 1}`);
-      gameState.moveBack();
+      gameState.moveBackChar();
+    } else if (event.inputType === "deleteWordBackward" && history.length > 0) {
+      sound.play(`return${Math.floor(Math.random() * 5) + 1}`);
+      gameState.moveBackWord();
     } else {
       sound.play(`error${Math.floor(Math.random() * 4) + 1}`);
     }

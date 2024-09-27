@@ -290,14 +290,14 @@ export class GameState {
     }
   }
 
-  moveBack() {
+  moveBackChar(): Tile | null {
     const currentTile = this.findTile(...this.currentCoordinate);
     if (currentTile === null) {
       throw new Error(`Tile at ${this.currentCoordinate} not found`);
     }
     const lastTileCoordinate = this.history.pop();
     if (lastTileCoordinate === undefined) {
-      return;
+      return null;
     }
 
     const lastTile = this.findTile(...lastTileCoordinate);
@@ -312,6 +312,22 @@ export class GameState {
     this.currentCoordinate = lastTileCoordinate;
 
     this.checkIfPlayerIsDead();
+
+    return lastTile;
+  }
+
+  moveBackWord() {
+    const newCurrentTile = this.moveBackChar();
+
+    if (
+      newCurrentTile === null ||
+      newCurrentTile.letter === " " ||
+      this.history.length === 0
+    ) {
+      return;
+    }
+
+    this.moveBackWord();
   }
 
   getSurroundingPathTiles(coord: TileCoordinate) {

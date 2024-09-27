@@ -19,4 +19,6 @@ export type Config = {
   chunkGenerationDistance: number;
 
   crossingsToPreFillWithWords: number;
+
+  inputElement: HTMLInputElement;
 };

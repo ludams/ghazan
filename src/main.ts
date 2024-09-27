@@ -4,6 +4,7 @@ import { Application, Assets } from "pixi.js";
 import { Config } from "./config.ts";
 import { Game } from "./game.ts";
 import { generateRandomSeed } from "./random-seed.ts";
+import { makeGameSceneResponsive } from "./responsive.ts";
 
 export const config: Config = {
   wallColor: 0x000000,
@@ -25,6 +26,7 @@ export const config: Config = {
   chunkGenerationDistance: 5,
 
   crossingsToPreFillWithWords: 3,
+  inputElement: document.getElementById("input") as HTMLInputElement,
 };
 
 const app = new Application();
@@ -34,6 +36,7 @@ Promise.all([
   app.init({ resizeTo: window, backgroundColor: config.wallColor }),
 ]).then(() => {
   startApp();
+  makeGameSceneResponsive(app, config);
 });
 
 function startApp() {
