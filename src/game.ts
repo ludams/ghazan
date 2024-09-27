@@ -4,6 +4,7 @@ import { Config } from "./config.ts";
 import { GameState, TileCoordinate } from "./gameState.ts";
 import { GridChunk } from "./maze-generation.ts";
 import { Tile } from "./tile.ts";
+import { getScaleRatio, getTotalHeightOfGameScene } from "./responsive.ts";
 
 export class Game {
   app: Application;
@@ -70,6 +71,11 @@ export class Game {
   }
 
   displayGameOver(score: number) {
+    const totalHeightOfGameScene = getTotalHeightOfGameScene(this.config);
+    const viewPortWidth = window.visualViewport?.width ?? window.innerWidth;
+    const scaleRatio = getScaleRatio(this.config);
+    const screenWidthInPixel = viewPortWidth / scaleRatio;
+
     const gameOverText = new Text({
       text: "Game Over",
       style: {
@@ -78,8 +84,9 @@ export class Game {
         fill: 0xffffff,
       },
     });
-    gameOverText.x = this.app.screen.width / 2 - gameOverText.width / 2;
-    gameOverText.y = this.app.screen.height / 2 - gameOverText.height / 2;
+
+    gameOverText.x = screenWidthInPixel / 2 - gameOverText.width / 2;
+    gameOverText.y = totalHeightOfGameScene / 2 - gameOverText.height / 2;
     const scoreText = new Text({
       text: `Score: ${score}`,
       style: {
@@ -88,8 +95,8 @@ export class Game {
         fill: 0xffffff,
       },
     });
-    scoreText.x = this.app.screen.width / 2 - scoreText.width / 2;
-    scoreText.y = this.app.screen.height / 2 + scoreText.height;
+    scoreText.x = screenWidthInPixel / 2 - scoreText.width / 2;
+    scoreText.y = totalHeightOfGameScene / 2 + scoreText.height;
     this.app.stage.addChild(gameOverText);
     this.app.stage.addChild(scoreText);
   }

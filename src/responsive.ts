@@ -18,11 +18,18 @@ export function makeGameSceneResponsive(app: Application, config: Config) {
   resize();
 }
 
-function resizeGameSceneToFitScreen(app: Application, config: Config) {
-  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-
+export function getTotalHeightOfGameScene(config: Config) {
   const amountOfTiles = config.chunkCellsPerGrid * 2 + 2;
-  const totalHeightOfGameScene = amountOfTiles * config.pixelSize;
-  app.stage.scale = viewportHeight / totalHeightOfGameScene;
+  return amountOfTiles * config.pixelSize;
+}
+
+export function getScaleRatio(config: Config): number {
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+  const totalHeightOfGameScene = getTotalHeightOfGameScene(config);
+  return viewportHeight / totalHeightOfGameScene;
+}
+
+function resizeGameSceneToFitScreen(app: Application, config: Config) {
+  app.stage.scale = getScaleRatio(config);
   app.resize();
 }
