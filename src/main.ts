@@ -4,7 +4,6 @@ import { Application, Assets } from "pixi.js";
 import { Config } from "./config.ts";
 import { Game } from "./game.ts";
 import { generateRandomSeed } from "./random-seed.ts";
-import { makeGameSceneResponsive } from "./responsive.ts";
 
 export const config: Config = {
   wallColor: 0x000000,
@@ -33,10 +32,12 @@ const app = new Application();
 
 Promise.all([
   Assets.load("JetBrainsMono/JetBrainsMono-Regular.woff2"),
-  app.init({ resizeTo: window, backgroundColor: config.wallColor }),
+  app.init({
+    resizeTo: document.getElementById("app")!,
+    backgroundColor: config.wallColor,
+  }),
 ]).then(() => {
   startApp();
-  makeGameSceneResponsive(app, config);
 });
 
 function startApp() {

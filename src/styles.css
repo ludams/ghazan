@@ -4,6 +4,12 @@ html, body {
   min-width: 320px;
   height: 100vh;
   overflow: hidden;
+  background-color: black;
+}
+
+#app, canvas {
+  height: calc(var(--vh, 1vh) * 100);
+  width: calc(var(--vw, 1vw) * 100);
 }
 
 #input {

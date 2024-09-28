@@ -4,14 +4,20 @@ import { Config } from "./config.ts";
 import { GameState, TileCoordinate } from "./gameState.ts";
 import { GridChunk } from "./maze-generation.ts";
 import { Tile } from "./tile.ts";
+import { VisualViewportListener } from "./visual-viewport-listener.ts";
+import { ResponsiveContainer } from "./responsive-container.ts";
 
 export class Game {
   app: Application;
   config: Config;
   gameState: GameState | null = null;
+  visualViewportListener: VisualViewportListener;
+  responsiveContainer: ResponsiveContainer;
 
   constructor(app: Application, config: Config) {
     this.app = app;
+    this.responsiveContainer = new ResponsiveContainer(app, config);
+    this.visualViewportListener = new VisualViewportListener(app);
     this.config = config;
   }
   private generateMazeForIndex(index: number): [number, number][] {
@@ -67,6 +73,14 @@ export class Game {
     );
 
     this.config.inputElement.focus();
+
+    this.responsiveContainer.init();
+    this.visualViewportListener.init();
+
+    this.visualViewportListener.subscribeToViewportChanges((_, height) => {
+      this.responsiveContainer.scaleStageToCanvas(height);
+    });
+    this.visualViewportListener.notifyListenersOfCurrentViewportDimensions();
   }
 
   displayGameOver(score: number) {
@@ -78,8 +92,6 @@ export class Game {
         fill: 0xffffff,
       },
     });
-    gameOverText.x = this.app.screen.width / 2 - gameOverText.width / 2;
-    gameOverText.y = this.app.screen.height / 2 - gameOverText.height / 2;
     const scoreText = new Text({
       text: `Score: ${score}`,
       style: {
@@ -88,10 +100,21 @@ export class Game {
         fill: 0xffffff,
       },
     });
-    scoreText.x = this.app.screen.width / 2 - scoreText.width / 2;
-    scoreText.y = this.app.screen.height / 2 + scoreText.height;
+
+    const setGameOverTextsPositions = (width: number, height: number) => {
+      gameOverText.x = width / 2 - gameOverText.width / 2;
+      gameOverText.y = height / 2 - gameOverText.height / 2;
+      scoreText.x = width / 2 - scoreText.width / 2;
+      scoreText.y = height / 2 + scoreText.height;
+    };
+
+    setGameOverTextsPositions(this.app.screen.width, this.app.screen.height);
     this.app.stage.addChild(gameOverText);
     this.app.stage.addChild(scoreText);
+
+    this.visualViewportListener.subscribeToViewportChanges((width, height) =>
+      setGameOverTextsPositions(width, height),
+    );
   }
 
   private resetGameState(x: number, y: number) {

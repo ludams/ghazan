@@ -119,7 +119,7 @@ export class GameState {
     }
 
     currentTile.visit();
-    this.game.app.stage.addChild(this.tileContainer);
+    this.game.responsiveContainer.container.addChild(this.tileContainer);
     setTimeout(() => {
       let initialLavaFields = [];
       const circleCenterX = -this.game.config.minGameTilePaddingLeft;
