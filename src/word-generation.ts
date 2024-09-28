@@ -52,10 +52,8 @@ export class WordGeneration {
       const tooSmallForSplitting =
         totalLength <= this.config.maxWordLengthToChooseInExactLengthMatchCase;
       const chanceDecidedToNotSplitIntoMultipleWords =
-        Math.floor(this.random()) <=
-        Math.floor(
-          (this.config.maxWordLengthToChooseInExactLengthMatchCase + 1) / 2,
-        );
+        Math.floor(this.random() * totalLength) <=
+        Math.floor(this.config.maxWordLengthToChooseInExactLengthMatchCase / 2);
       if (tooSmallForSplitting || chanceDecidedToNotSplitIntoMultipleWords) {
         const possibleExactLengthWord = englishWordsMap
           .get(totalLength)!
