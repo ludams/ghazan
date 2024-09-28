@@ -32,7 +32,7 @@ export class GameState {
     renderedChunksCount: number,
   ) {
     this.game = game;
-    this.wordGeneration = new WordGeneration(this);
+    this.wordGeneration = new WordGeneration(this, this.game.config);
     this.tileContainer = new Container({
       x: game.config.minGameTilePaddingLeft * game.config.pixelSize,
     });
