@@ -19,6 +19,7 @@ export type Config = {
   chunkGenerationDistance: number;
 
   crossingsToPreFillWithWords: number;
+  maxWordLengthToChooseInExactLengthMatchCase: number;
 
   inputElement: HTMLInputElement;
 };

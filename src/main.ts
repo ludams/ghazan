@@ -25,6 +25,7 @@ export const config: Config = {
   chunkGenerationDistance: 5,
 
   crossingsToPreFillWithWords: 3,
+  maxWordLengthToChooseInExactLengthMatchCase: 7,
   inputElement: document.getElementById("input") as HTMLInputElement,
 };
 

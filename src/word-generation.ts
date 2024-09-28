@@ -1,6 +1,7 @@
 import seedrandom from "seedrandom";
 import { GameState, TileCoordinate } from "./gameState.ts";
 import { words } from "./languages/english_10k.json";
+import { Config } from "./config.ts";
 
 const englishWords: string[] = words;
 const englishWordsMap: Map<number, string[]> = new Map();
@@ -12,14 +13,14 @@ englishWords.forEach((word) => {
 });
 
 export class WordGeneration {
-  gameState: GameState;
-  randomWordGenerator: () => number;
+  private readonly gameState: GameState;
+  private readonly config: Config;
+  private readonly random: () => number;
 
-  constructor(gameState: GameState) {
+  constructor(gameState: GameState, config: Config) {
     this.gameState = gameState;
-    this.randomWordGenerator = seedrandom(
-      gameState.game.config.baseSeed + "Words",
-    );
+    this.config = config;
+    this.random = seedrandom(gameState.game.config.baseSeed + "Words");
   }
 
   public renderNextWordsIfNecessary() {
@@ -48,18 +49,27 @@ export class WordGeneration {
       return this.generateRandomString(blockedBeginnings, 1);
     }
     if (englishWordsMap.has(totalLength)) {
-      const possibleExactLengthWord = englishWordsMap
-        .get(totalLength)!
-        .filter(
-          (word) =>
-            !blockedBeginnings.includes(word.charAt(0)) &&
-            !blockedEndings.includes(word.charAt(word.length - 1)),
+      const tooSmallForSplitting =
+        totalLength <= this.config.maxWordLengthToChooseInExactLengthMatchCase;
+      const chanceDecidedToNotSplitIntoMultipleWords =
+        Math.floor(this.random()) <=
+        Math.floor(
+          (this.config.maxWordLengthToChooseInExactLengthMatchCase + 1) / 2,
         );
-      if (possibleExactLengthWord.length > 0) {
-        const chosenWordIndex = Math.floor(
-          this.randomWordGenerator() * possibleExactLengthWord.length,
-        );
-        return possibleExactLengthWord[chosenWordIndex];
+      if (tooSmallForSplitting || chanceDecidedToNotSplitIntoMultipleWords) {
+        const possibleExactLengthWord = englishWordsMap
+          .get(totalLength)!
+          .filter(
+            (word) =>
+              !blockedBeginnings.includes(word.charAt(0)) &&
+              !blockedEndings.includes(word.charAt(word.length - 1)),
+          );
+        if (possibleExactLengthWord.length > 0) {
+          const chosenWordIndex = Math.floor(
+            this.random() * possibleExactLengthWord.length,
+          );
+          return possibleExactLengthWord[chosenWordIndex];
+        }
       }
     }
 
@@ -82,14 +92,12 @@ export class WordGeneration {
 
     while (possibleLengthsForFirstWord.length > 0) {
       const chosenWordLengthIndex = Math.floor(
-        this.randomWordGenerator() * possibleLengthsForFirstWord.length,
+        this.random() * possibleLengthsForFirstWord.length,
       );
       const [_, possibleWords] =
         possibleWordsByLengthForFirstWord[chosenWordLengthIndex];
 
-      const chosenWordIndex = Math.floor(
-        this.randomWordGenerator() * possibleWords.length,
-      );
+      const chosenWordIndex = Math.floor(this.random() * possibleWords.length);
       const chosenWord = possibleWords[chosenWordIndex];
 
       const remainingWord = this.getRandomWordsOfTotalLengthWithConstraints(
@@ -114,12 +122,12 @@ export class WordGeneration {
     let result = "";
 
     const firstLetterCharIndex = Math.floor(
-      this.randomWordGenerator() * reducedCharsetForFirstLetter.length,
+      this.random() * reducedCharsetForFirstLetter.length,
     );
     result += reducedCharsetForFirstLetter[firstLetterCharIndex];
 
     for (let i = 1; i < length; i++) {
-      const index = Math.floor(this.randomWordGenerator() * charset.length);
+      const index = Math.floor(this.random() * charset.length);
       result += charset[index];
     }
 
