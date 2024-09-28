@@ -146,6 +146,9 @@ export class Game {
 
     let nextTile: Tile | undefined = undefined;
     if (event.inputType.startsWith("insert")) {
+      if (event.data!.length > 1) {
+        event.preventDefault();
+      }
       nextTile = gameState.findNextTile(event.data!);
     }
 
