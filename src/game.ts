@@ -139,7 +139,8 @@ export class Game {
 
   handleInput(event: InputEvent) {
     const gameState = this.gameState;
-    if (gameState === null) {
+    if (gameState === null || gameState.playerIsDead) {
+      event.preventDefault();
       return;
     }
 

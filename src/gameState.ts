@@ -17,8 +17,13 @@ export class GameState {
 
   moveLavaListener: ((ticker: Ticker) => void) | null = null;
   centerGameListener: ((ticker: Ticker) => void) | null = null;
+  gameLoopListener: (() => void) | null = null;
 
   playerDeathListener: ((score: number) => void) | null = null;
+  playerIsDead: boolean = false;
+
+  lastUpdateTime: number = Date.now();
+  cameraFollowIntervalId: number | null = null;
 
   constructor(
     game: Game,
@@ -70,36 +75,38 @@ export class GameState {
     this.currentCoordinate = startCoordinate;
     this.renderedChunksCount = renderedChunksCount;
 
-    let lastUpdateTime = Date.now();
-    game.app.ticker.add(() => {
-      const currentMinVisibleX =
-        -this.tileContainer.position.x / game.config.pixelSize;
-      const currentMaxVisibleX =
-        currentMinVisibleX + game.config.chunkCellsPerGrid * 2 * 3;
+    this.gameLoopListener = () => this.gameLoop();
+    game.app.ticker.add(this.gameLoopListener);
+  }
 
-      const now = Date.now();
-      if (now - lastUpdateTime < 20) {
-        return;
+  private gameLoop() {
+    const currentMinVisibleX =
+      -this.tileContainer.position.x / this.game.config.pixelSize;
+    const currentMaxVisibleX =
+      currentMinVisibleX + this.game.config.chunkCellsPerGrid * 2 * 3;
+
+    const now = Date.now();
+    if (now - this.lastUpdateTime < 20) {
+      return;
+    }
+    this.lastUpdateTime = now;
+    let count = 0;
+    let maxY = 0;
+    let minY = 1000;
+    for (let tile of this.tiles.values()) {
+      maxY = Math.max(maxY, tile.x);
+      minY = Math.min(minY, tile.x);
+      const isVisible =
+        tile.x >= currentMinVisibleX - 1 && tile.x <= currentMaxVisibleX + 1;
+      const updated = tile.updateGraphics(
+        this.currentCoordinate[0],
+        this.currentCoordinate[1],
+        isVisible,
+      );
+      if (updated) {
+        count++;
       }
-      lastUpdateTime = now;
-      let count = 0;
-      let maxY = 0;
-      let minY = 1000;
-      for (let tile of this.tiles.values()) {
-        maxY = Math.max(maxY, tile.x);
-        minY = Math.min(minY, tile.x);
-        const isVisible =
-          tile.x >= currentMinVisibleX - 1 && tile.x <= currentMaxVisibleX + 1;
-        const updated = tile.updateGraphics(
-          this.currentCoordinate[0],
-          this.currentCoordinate[1],
-          isVisible,
-        );
-        if (updated) {
-          count++;
-        }
-      }
-    });
+    }
   }
 
   start() {
@@ -161,7 +168,7 @@ export class GameState {
         const now = Date.now();
         const timeDelta = now - lastLavaTime;
         const lavaSpeed = this.computeLavaSpeed(distanceWithLavaBaseSpeed);
-        const lavaMoveTime = 800 / lavaSpeed;
+        const lavaMoveTime = 80 / lavaSpeed;
         if (timeDelta > lavaMoveTime) {
           lastLavaTime = now;
           this.spreadLava();
@@ -171,7 +178,7 @@ export class GameState {
       this.game.app.ticker.add(moveLavaListener);
       this.moveLavaListener = moveLavaListener;
     }, 0);
-    setInterval(() => {
+    this.cameraFollowIntervalId = setInterval(() => {
       const currentMinVisibleX =
         -this.tileContainer.position.x / this.game.config.pixelSize;
       const xToRemoveBefore = currentMinVisibleX - 200;
@@ -291,6 +298,9 @@ export class GameState {
   }
 
   moveBackChar(): Tile | null {
+    if (this.playerIsDead) {
+      return null;
+    }
     const currentTile = this.findTile(...this.currentCoordinate);
     if (currentTile === null) {
       throw new Error(`Tile at ${this.currentCoordinate} not found`);
@@ -409,6 +419,7 @@ export class GameState {
       if (this.playerDeathListener !== null) {
         this.playerDeathListener(x);
       }
+      this.playerIsDead = true;
     }
   }
 
@@ -421,14 +432,21 @@ export class GameState {
       this.game.app.ticker.remove(this.centerGameListener);
       this.centerGameListener = null;
     }
+    if (this.gameLoopListener !== null) {
+      this.game.app.ticker.remove(this.gameLoopListener);
+      this.gameLoopListener = null;
+    }
   }
 
   destroy() {
     this.removeListeners();
+    if (this.cameraFollowIntervalId) {
+      clearInterval(this.cameraFollowIntervalId);
+    }
     for (let tile of this.tiles.values()) {
       tile.destroy();
     }
-    this.game.app.stage.removeChild(this.tileContainer);
+    this.game.responsiveContainer.container.removeChild(this.tileContainer);
     this.tileContainer.destroy();
   }
 }
