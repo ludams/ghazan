@@ -73,6 +73,7 @@ export class Tile {
   setLetter(letter: string) {
     if (this.letter !== undefined) {
       console.warn("Trying to set letter on tile that already has a letter");
+      return;
     }
     if (!this.isPath) {
       throw new Error("Trying to set letter on non-path tile");

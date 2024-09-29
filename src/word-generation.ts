@@ -180,7 +180,8 @@ export class WordGeneration {
   ) {
     pathTiles.forEach(([x, y], index) => {
       const tile = this.gameState.findTile(x, y);
-      tile?.setLetter(chosenWord.charAt(index));
+      if (tile && tile.letter === undefined)
+        tile.setLetter(chosenWord.charAt(index));
     });
   }
 
