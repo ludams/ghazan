@@ -24,6 +24,9 @@ export const config: Config = {
   chunkConnectingWallBreakRatio: 0.25,
   chunkGenerationDistance: 5,
 
+  defaultLanguage: "english_10k",
+  language:
+    new URL(window.location.href).searchParams.get("lang") ?? "english_10k",
   crossingsToPreFillWithWords: 3,
   maxWordLengthToChooseInExactLengthMatchCase: 7,
   inputElement: document.getElementById("input") as HTMLInputElement,

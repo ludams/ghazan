@@ -1,26 +1,29 @@
 import seedrandom from "seedrandom";
 import { GameState, TileCoordinate } from "./gameState.ts";
-import { words } from "./languages/english_10k.json";
 import { Config } from "./config.ts";
-
-const englishWords: string[] = words;
-const englishWordsMap: Map<number, string[]> = new Map();
-englishWords.forEach((word) => {
-  if (!englishWordsMap.has(word.length)) {
-    englishWordsMap.set(word.length, []);
-  }
-  englishWordsMap.get(word.length)!.push(word.toLowerCase());
-});
 
 export class WordGeneration {
   private readonly gameState: GameState;
   private readonly config: Config;
   private readonly random: () => number;
+  private readonly words: Map<number, string[]>;
 
-  constructor(gameState: GameState, config: Config) {
+  constructor(gameState: GameState, config: Config, words: string[]) {
     this.gameState = gameState;
     this.config = config;
     this.random = seedrandom(gameState.game.config.baseSeed + "Words");
+    this.words = this.structureWordsIntoMap(words);
+  }
+
+  private structureWordsIntoMap(words: string[]): Map<number, string[]> {
+    const wordsMap: Map<number, string[]> = new Map();
+    words.forEach((word) => {
+      if (!wordsMap.has(word.length)) {
+        wordsMap.set(word.length, []);
+      }
+      wordsMap.get(word.length)!.push(word.toLowerCase());
+    });
+    return wordsMap;
   }
 
   public renderNextWordsIfNecessary() {
@@ -48,14 +51,14 @@ export class WordGeneration {
     if (totalLength === 1) {
       return this.generateRandomString(blockedBeginnings, 1);
     }
-    if (englishWordsMap.has(totalLength)) {
+    if (this.words.has(totalLength)) {
       const tooSmallForSplitting =
         totalLength <= this.config.maxWordLengthToChooseInExactLengthMatchCase;
       const chanceDecidedToNotSplitIntoMultipleWords =
         Math.floor(this.random() * totalLength) <=
         Math.floor(this.config.maxWordLengthToChooseInExactLengthMatchCase / 2);
       if (tooSmallForSplitting || chanceDecidedToNotSplitIntoMultipleWords) {
-        const possibleExactLengthWord = englishWordsMap
+        const possibleExactLengthWord = this.words
           .get(totalLength)!
           .filter(
             (word) =>
@@ -71,9 +74,7 @@ export class WordGeneration {
       }
     }
 
-    const possibleWordsByLengthForFirstWord = Array.from(
-      englishWordsMap.entries(),
-    )
+    const possibleWordsByLengthForFirstWord = Array.from(this.words.entries())
       .filter(([length]) => length < totalLength - 1)
       .map(
         ([letter, words]) =>

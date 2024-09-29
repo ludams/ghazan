@@ -18,6 +18,8 @@ export type Config = {
   chunkConnectingWallBreakRatio: number;
   chunkGenerationDistance: number;
 
+  defaultLanguage: string;
+  language: string;
   crossingsToPreFillWithWords: number;
   maxWordLengthToChooseInExactLengthMatchCase: number;
 

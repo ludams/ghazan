@@ -26,8 +26,8 @@ export class Game {
     return newGridChunk.corridorMazePixels.map(({ x, y }) => [x + 1, y + 1]);
   }
 
-  start(x: number, y: number) {
-    this.resetGameState(x, y);
+  async start(x: number, y: number) {
+    await this.resetGameState(x, y);
     let gameState = this.gameState;
     if (gameState === null) {
       throw new Error("Game state is null");
@@ -117,7 +117,7 @@ export class Game {
     );
   }
 
-  private resetGameState(x: number, y: number) {
+  private async resetGameState(x: number, y: number) {
     const initiallyRenderedChunkCount = this.config.chunkGenerationDistance;
     const tiles = this.createInitialTilesMap(initiallyRenderedChunkCount);
 
@@ -128,7 +128,7 @@ export class Game {
       startCoordinate,
       initiallyRenderedChunkCount,
     );
-    this.gameState.start();
+    await this.gameState.start();
   }
 
   private createInitialTilesMap(initialChunkCount: number): [number, number][] {

@@ -2,6 +2,7 @@ import { Container, Ticker } from "pixi.js";
 import { Game } from "./game.ts";
 import { Tile } from "./tile.ts";
 import { WordGeneration } from "./word-generation.ts";
+import { loadWords } from "./load-words.ts";
 
 export type TileCoordinate = [number, number];
 
@@ -13,7 +14,7 @@ export class GameState {
   startCoordinate: TileCoordinate;
   currentCoordinate: TileCoordinate;
   renderedChunksCount: number;
-  wordGeneration: WordGeneration;
+  wordGeneration: WordGeneration | null = null;
 
   moveLavaListener: ((ticker: Ticker) => void) | null = null;
   centerGameListener: ((ticker: Ticker) => void) | null = null;
@@ -32,7 +33,6 @@ export class GameState {
     renderedChunksCount: number,
   ) {
     this.game = game;
-    this.wordGeneration = new WordGeneration(this, this.game.config);
     this.tileContainer = new Container({
       x: game.config.minGameTilePaddingLeft * game.config.pixelSize,
     });
@@ -109,7 +109,7 @@ export class GameState {
     }
   }
 
-  start() {
+  async start() {
     for (const tile of this.tiles.values()) {
       tile.updateGraphics(
         this.startCoordinate[0],
@@ -121,12 +121,17 @@ export class GameState {
     if (currentTile === null) {
       throw new Error(`Tile at ${this.startCoordinate} not found`);
     }
+
+    currentTile.visit();
+    this.game.responsiveContainer.container.addChild(this.tileContainer);
+
+    const words = await loadWords(this.game.config);
+    this.wordGeneration = new WordGeneration(this, this.game.config, words);
+
     for (let i = 1; i <= this.game.config.crossingsToPreFillWithWords; i++) {
       this.wordGeneration.renderNextWords(this.startCoordinate, null, i);
     }
 
-    currentTile.visit();
-    this.game.responsiveContainer.container.addChild(this.tileContainer);
     setTimeout(() => {
       let initialLavaFields = [];
       const circleCenterX = -this.game.config.minGameTilePaddingLeft;
@@ -272,7 +277,7 @@ export class GameState {
 
     this.checkIfPlayerIsDead();
 
-    this.wordGeneration.renderNextWordsIfNecessary();
+    this.wordGeneration?.renderNextWordsIfNecessary();
   }
 
   private updateHighlighting(oldTile: Tile, nextTile: Tile) {
