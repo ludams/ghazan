@@ -153,7 +153,11 @@ export class Tile {
     this.nextState = newState;
   }
 
-  updateGraphics(playerX: number, playerY: number, isVisible: boolean) {
+  updateGraphics(
+    playerX: number,
+    playerY: number,
+    isVisible: boolean,
+  ): boolean {
     if (this.nextState === undefined && !isVisible) {
       return false;
     }
@@ -163,7 +167,7 @@ export class Tile {
       this.state = this.nextState;
       this.nextState = undefined;
       this.renderStateChange(distance);
-      updated = true;
+      return true;
     } else {
       if (this.state.heat >= 1) {
         this.updateLavaAnimation();
