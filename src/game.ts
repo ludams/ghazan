@@ -1,4 +1,4 @@
-import { IMediaInstance, sound } from "@pixi/sound";
+import { sound } from "@pixi/sound";
 import { Application, Text } from "pixi.js";
 import { Config } from "./config.ts";
 import { GameState, TileCoordinate } from "./gameState.ts";
