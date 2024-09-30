@@ -1,4 +1,4 @@
-import { sound } from "@pixi/sound";
+import { IMediaInstance, sound } from "@pixi/sound";
 import { Application, Text } from "pixi.js";
 import { Config } from "./config.ts";
 import { GameState, TileCoordinate } from "./gameState.ts";
@@ -35,25 +35,15 @@ export class Game {
 
     let currentSong = "musicIntro";
     const playRandomMusic = () => {
-      const random = Math.random();
-      if (random < 0.5) {
-        currentSong = "musicLoop1";
-        sound.play("musicLoop1", {
-          complete: playRandomMusic,
-          volume: 0.5,
-          end: 17,
-        });
-      } else {
-        currentSong = "musicLoop2";
-        sound.play("musicLoop2", {
-          complete: playRandomMusic,
-          volume: 0.5,
-          end: 17,
-        });
-      }
+      currentSong = Math.random() < 0.5 ? "musicLoop1" : "musicLoop2";
+      sound.play(currentSong, {
+        complete: playRandomMusic,
+        volume: 0.5,
+        end: 17,
+      });
     };
 
-    sound.play("musicIntro", {
+    sound.play(currentSong, {
       volume: 0.5,
       end: 17,
       complete: () => {
@@ -69,7 +59,7 @@ export class Game {
     });
 
     this.config.inputElement.addEventListener("beforeinput", (event) =>
-      this.handleInput(event),
+      this.handleInput(event)
     );
 
     this.config.inputElement.focus();
@@ -113,7 +103,7 @@ export class Game {
     this.app.stage.addChild(scoreText);
 
     this.visualViewportListener.subscribeToViewportChanges((width, height) =>
-      setGameOverTextsPositions(width, height),
+      setGameOverTextsPositions(width, height)
     );
   }
 
@@ -126,7 +116,7 @@ export class Game {
       this,
       tiles,
       startCoordinate,
-      initiallyRenderedChunkCount,
+      initiallyRenderedChunkCount
     );
     await this.gameState.start();
   }
@@ -182,7 +172,7 @@ export class Game {
 
   private renderNextChunk(gameState: GameState) {
     const newTilesToRender = this.generateMazeForIndex(
-      gameState.renderedChunksCount,
+      gameState.renderedChunksCount
     );
     gameState.addPaths(newTilesToRender);
     gameState.renderedChunksCount++;

@@ -46,6 +46,7 @@ Promise.all([
 
 function startApp() {
   document.getElementById("app")!.appendChild(app.canvas);
+
   sound.add("pick1", "sounds/pick_1.mp3");
   sound.add("pick2", "sounds/pick_2.mp3");
   sound.add("pick3", "sounds/pick_3.mp3");
@@ -66,9 +67,9 @@ function startApp() {
 
   sound.add("death", "sounds/death.mp3");
 
-  sound.add("musicIntro", "sounds/the_maze_intro.wav");
-  sound.add("musicLoop1", "sounds/the_maze_loop_1.wav");
-  sound.add("musicLoop2", "sounds/the_maze_loop_2.wav");
+  sound.add("musicIntro", { url: "sounds/the_maze_intro.wav", preload: true });
+  sound.add("musicLoop1", { url: "sounds/the_maze_loop_1.wav", preload: true });
+  sound.add("musicLoop2", { url: "sounds/the_maze_loop_2.wav", preload: true });
 
   // Developer tools integration
   // @ts-ignore
