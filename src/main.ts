@@ -38,6 +38,8 @@ Promise.all([
   Assets.load("JetBrainsMono/JetBrainsMono-Regular.woff2"),
   app.init({
     resizeTo: document.getElementById("app")!,
+    resolution: window.devicePixelRatio,
+    autoDensity: true,
     backgroundColor: config.wallColor,
   }),
 ]).then(() => {
